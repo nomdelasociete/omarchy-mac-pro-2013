@@ -21,8 +21,10 @@ Panel {
   }
 
   property int appIndex: 0
+  property int pendingPid: -1
   property bool cursorActive: false
   property string focusSection: "apps"
+  readonly property bool askBeforeRelaunch: String(settings.confirmRelaunch || "Ask first") !== "Immediately"
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.55)
@@ -72,7 +74,17 @@ Panel {
   function activateCursor() {
     ensureCursor()
     if (focusSection === "header") macpro.refresh()
-    else if (focusSection === "apps") macpro.moveApp(selectedApp())
+    else if (focusSection === "apps") root.activateApp(selectedApp())
+  }
+
+  function activateApp(app) {
+    if (!app) return
+    if (root.askBeforeRelaunch && root.pendingPid !== app.pid) {
+      root.pendingPid = app.pid
+      return
+    }
+    root.pendingPid = -1
+    macpro.moveApp(app)
   }
 
   function setAppCursor(index) {
@@ -253,19 +265,20 @@ Panel {
           Column {
             visible: !macpro.profileApplied
             width: parent.width
-            spacing: Style.space(6)
+            spacing: Style.space(8)
 
-            Text {
-              textFormat: Text.PlainText
-              width: parent.width
+            PanelSectionHeader {
+              text: "APPLY WILL"
               leftPadding: Style.space(10)
-              rightPadding: Style.space(10)
-              text: "Both GPUs. Sleep that can wake. Wi-Fi that comes back.\nNo DRM login loop. No manual ritual."
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.bodySmall
-              wrapMode: Text.Wrap
+              foreground: root.foreground
+              fontFamily: root.fontFamily
             }
+
+            Fact { label: "GPUs"; value: "Name both FirePros. No PCI colon login loop." }
+            Fact { label: "Sleep"; value: "Hibernate on. Suspend stays off." }
+            Fact { label: "Wake"; value: "Retrain the display. Hyprland is not restarted." }
+            Fact { label: "Wi-Fi"; value: "Reconnect if the Broadcom radio drops." }
+            Fact { label: "Login"; value: "Greeter keymap from vconsole." }
 
             CursorSurface {
               width: parent.width
@@ -281,7 +294,7 @@ Panel {
                 textFormat: Text.PlainText
                 anchors.verticalCenter: parent.verticalCenter
                 leftPadding: Style.space(10)
-                text: "Apply profile  ·  sudo in a terminal"
+                text: "Apply  ·  sudo in a terminal"
                 color: root.foreground
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.body
@@ -289,54 +302,79 @@ Panel {
             }
           }
 
-          Text {
-            visible: macpro.profileApplied && macpro.needsReboot
-            textFormat: Text.PlainText
+          Column {
+            visible: macpro.profileApplied
             width: parent.width
+            spacing: Style.space(8)
+
+            PanelSectionHeader {
+              text: "STATUS"
+              leftPadding: Style.space(10)
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+            }
+
+            Fact { label: "DRM"; value: macpro.udevNames ? "d700-display / d700-offload" : "not attached yet" }
+            Fact { label: "Sleep"; value: "Suspend " + macpro.suspend + " · Hibernate " + macpro.hibernate }
+            Fact {
+              label: "Session"
+              value: macpro.needsReboot ? "Reboot when this job is done (not logout)" : "GPU names live"
+            }
+
+            Toggle {
+              width: parent.width
+              label: "Wi-Fi reconnect"
+              description: "If the Broadcom card drops, bring the SSID back. No AP lock."
+              checked: macpro.wifiWatch
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              onClicked: macpro.toggleWifiWatch()
+            }
+
+            CursorSurface {
+              width: parent.width
+              implicitHeight: Style.space(36)
+              foreground: root.foreground
+              hasCursor: false
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: macpro.removeProfile()
+              }
+              Text {
+                textFormat: Text.PlainText
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: Style.space(10)
+                text: "Remove profile…"
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+              }
+            }
+          }
+
+          PanelSeparator { foreground: root.foreground }
+
+          PanelSectionHeader {
+            text: "WINDOWS"
             leftPadding: Style.space(10)
-            rightPadding: Style.space(10)
-            text: "Do not log out now. Reboot later so the GPU names attach. Windows below already work on this session."
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-            wrapMode: Text.WordWrap
+            foreground: root.foreground
+            fontFamily: root.fontFamily
           }
 
           Text {
-            visible: macpro.profileApplied && !macpro.needsReboot
             textFormat: Text.PlainText
             width: parent.width
             leftPadding: Style.space(10)
             rightPadding: Style.space(10)
-            text: "Click a window to relaunch it on the other FirePro. Sleep is Hibernate. Super+Alt+M toggles 30/60 Hz."
+            text: root.askBeforeRelaunch
+                  ? "Click once to select, again to close and reopen on the other GPU."
+                  : "Click to close and reopen on the other GPU."
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
             wrapMode: Text.WordWrap
           }
-
-          CursorSurface {
-            width: parent.width
-            implicitHeight: Style.space(36)
-            foreground: root.foreground
-            hasCursor: false
-            visible: macpro.profileApplied
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: macpro.removeProfile()
-            }
-            Text {
-              anchors.verticalCenter: parent.verticalCenter
-              leftPadding: Style.space(10)
-              text: "Remove profile…"
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.body
-            }
-          }
-
-          PanelSeparator { foreground: root.foreground }
 
           Column {
             id: appColumn
@@ -369,6 +407,27 @@ Panel {
     }
   }
 
+  component Fact: Item {
+    id: fact
+    property string label: ""
+    property string value: ""
+    width: parent ? parent.width : 0
+    implicitHeight: factText.implicitHeight + Style.space(4)
+    Text {
+      id: factText
+      textFormat: Text.PlainText
+      anchors.left: parent.left
+      anchors.right: parent.right
+      leftPadding: Style.space(10)
+      rightPadding: Style.space(10)
+      text: fact.label + "  ·  " + fact.value
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.bodySmall
+      wrapMode: Text.WordWrap
+    }
+  }
+
   component AppRow: CursorSurface {
     id: appRow
     property var app: null
@@ -383,7 +442,7 @@ Panel {
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
       onEntered: root.setAppCursor(appRow.rowIndex)
-      onClicked: macpro.moveApp(appRow.app)
+      onClicked: root.activateApp(appRow.app)
     }
 
     RowLayout {
@@ -419,7 +478,9 @@ Panel {
         Text {
           textFormat: Text.PlainText
           Layout.fillWidth: true
-          text: Model.appMeta(appRow.app)
+          text: (root.pendingPid === appRow.app.pid)
+                ? ("Click again: " + Model.otherLabel(appRow.app.gpu) + " · closes this window")
+                : Model.appMeta(appRow.app)
           color: root.dim
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption

@@ -18,6 +18,10 @@ Item {
   property int displayCount: 0
   property bool profileApplied: false
   property bool needsReboot: false
+  property bool wifiWatch: false
+  property bool udevNames: false
+  property string suspend: ""
+  property string hibernate: ""
   property bool isMacPro: false
   property string product: ""
   property string sleepSummary: ""
@@ -56,6 +60,13 @@ Item {
   function removeProfile() {
     actionStatus = "Remove: sudo in the terminal…"
     Quickshell.execDetached(["omarchy-launch-floating-terminal-with-presentation", removeBin])
+  }
+
+  function toggleWifiWatch() {
+    var on = !wifiWatch
+    wifiWatch = on
+    wifiProc.command = ["systemctl", "--user", on ? "enable" : "disable", "--now", "nomdelasociete.macpro-wifi-watch.service"]
+    wifiProc.running = true
   }
 
   function moveApp(app) {
@@ -110,16 +121,25 @@ Item {
       }
       profileApplied = s.applied === true
       needsReboot = s.needsReboot === true
+      wifiWatch = s.wifiWatch === true
+      udevNames = s.udevNames === true
+      suspend = String(s.suspend || "")
+      hibernate = String(s.hibernate || "")
       isMacPro = s.isMacPro61 === true
       product = String(s.product || "")
       var bits = []
-      if (s.needsReboot) bits.push("reboot when this job is done")
-      bits.push("Suspend " + String(s.suspend || "?"))
-      bits.push("Hibernate " + String(s.hibernate || "?"))
-      if (s.udevNames) bits.push("DRM names ok")
-      if (s.wifiWatch) bits.push("Wi-Fi watch")
+      if (s.needsReboot) bits.push("reboot when ready")
+      else bits.push("live")
+      if (s.wifiWatch) bits.push("Wi-Fi watch on")
       sleepSummary = bits.join(" · ")
     }
+  }
+
+  Process {
+    id: wifiProc
+    stdout: StdioCollector {}
+    stderr: StdioCollector {}
+    onExited: function() { Qt.callLater(root.refresh) }
   }
 
   Process {

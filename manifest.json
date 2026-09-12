@@ -18,9 +18,18 @@
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
-      "refreshIntervalSec": 4
+      "refreshIntervalSec": 4,
+      "confirmRelaunch": "Ask first"
     },
     "schema": [
+      {
+        "key": "confirmRelaunch",
+        "type": "enum",
+        "label": "Relaunch a window on the other GPU",
+        "options": ["Ask first", "Immediately"],
+        "defaultValue": "Ask first",
+        "description": "Ask first: click once to preview, again to close and reopen."
+      },
       {
         "key": "refreshIntervalSec",
         "type": "integer",
