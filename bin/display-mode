@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Toggle the connected display between sharp (max pixels, often 30 Hz on
+# HDMI 1.4) and smooth (best mode with refresh >= 50 Hz).
+# Uses the live DRM connector — never hardcode DP-10 / DP-8.
+set -euo pipefail
+
+python3 - <<'PY'
+import json, os, re, subprocess, sys
+
+def run(args):
+    return subprocess.check_output(args, text=True)
+
+monitors = json.loads(run(["hyprctl", "monitors", "-j"]))
+if not monitors:
+    sys.exit("no monitors")
+
+mon = next((m for m in monitors if m.get("focused")), monitors[0])
+output = mon["name"]
+cur_w = int(mon["width"])
+cur_h = int(mon["height"])
+cur_hz = float(mon["refreshRate"])
+
+def parse_mode(s):
+    s = s.strip().removesuffix("Hz")
+    m = re.fullmatch(r"(\d+)x(\d+)@([0-9.]+)", s)
+    if not m:
+        return None
+    w, h, hz = int(m[1]), int(m[2]), float(m[3])
+    return {"raw": f"{w}x{h}@{hz:g}", "w": w, "h": h, "hz": hz, "pixels": w * h}
+
+modes = []
+seen = set()
+for raw in mon.get("availableModes") or []:
+    parsed = parse_mode(raw)
+    if not parsed:
+        continue
+    key = (parsed["w"], parsed["h"], round(parsed["hz"], 2))
+    if key in seen:
+        continue
+    seen.add(key)
+    modes.append(parsed)
+
+if not modes:
+    sys.exit("no modes")
+
+sharp = max(modes, key=lambda m: (m["pixels"], m["hz"]))
+smooth_candidates = [m for m in modes if m["hz"] >= 50]
+smooth = max(smooth_candidates, key=lambda m: (m["pixels"], m["hz"])) if smooth_candidates else None
+
+want_smooth = cur_hz < 50 and smooth is not None
+target = smooth if want_smooth else sharp
+
+if target["w"] == cur_w and target["h"] == cur_h and abs(target["hz"] - cur_hz) < 1:
+    # Already on this class of mode; flip to the other if possible.
+    target = sharp if want_smooth else (smooth or sharp)
+
+lua = (
+    "hl.monitor({ output = '%s', mode = '%s', position = '0x0', scale = 1 })"
+    % (output, target["raw"])
+)
+subprocess.check_call(["hyprctl", "eval", lua], stdout=subprocess.DEVNULL)
+
+cfg = os.path.expanduser("~/.config/hypr/monitors.lua")
+try:
+    text = open(cfg, encoding="utf-8").read()
+    text, n1 = re.subn(r'output = "[^"]+"', f'output = "{output}"', text, count=1)
+    text, n2 = re.subn(r'mode = "[^"]+"', f'mode = "{target["raw"]}"', text, count=1)
+    if n1 and n2:
+        open(cfg, "w", encoding="utf-8").write(text)
+except OSError:
+    pass
+
+label = "smoother desktop" if target["hz"] >= 50 else "native / sharp"
+msg = f"{target['w']}×{target['h']} @ {target['hz']:g} Hz — {label}"
+subprocess.call(
+    ["omarchy-notification-send", "-u", "low", "Display", msg],
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+)
+print(f"{output} {target['raw']}")
+PY

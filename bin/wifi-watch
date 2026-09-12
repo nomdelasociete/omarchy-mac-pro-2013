@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Reconnect Broadcom STA (wl) when the link dies. No BSSID/band lock.
+set -u
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy"
+LOG="$STATE_DIR/wifi-watch.log"
+mkdir -p "$STATE_DIR"
+log() { printf '%s %s\n' "$(date '+%F %T')" "$*" >>"$LOG"; }
+
+wifi_dev() {
+  nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2=="wifi"{print $1; exit}'
+}
+
+eth_up() {
+  nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | grep -qE ':ethernet:connected$'
+}
+
+link_ok() {
+  local dev g
+  dev="$(wifi_dev)"
+  [[ -n "$dev" ]] || return 1
+  nmcli -t -f GENERAL.STATE device show "$dev" 2>/dev/null | grep -q '^GENERAL.STATE:100'
+  g="$(nmcli -t -f IP4.GATEWAY device show "$dev" 2>/dev/null | awk -F: 'NR==1{print $2}')"
+  [[ -n "$g" ]] || return 1
+  ping -c 1 -W 2 "$g" >/dev/null 2>&1
+}
+
+reconnect() {
+  local dev conn
+  dev="$(wifi_dev)"
+  conn="$(nmcli -t -f NAME,DEVICE connection show --active | awk -F: -v d="$dev" '$2==d{print $1; exit}')"
+  [[ -z "$conn" ]] && conn="$(nmcli -t -f NAME,TYPE connection show | awk -F: '$2=="802-11-wireless"{print $1; exit}')"
+  log "reconnect dev=$dev conn=$conn"
+  [[ -n "$dev" ]] && nmcli device disconnect "$dev" >/dev/null 2>&1 || true
+  sleep 2
+  if [[ -n "$conn" ]]; then
+    nmcli connection up "$conn" >/dev/null 2>&1 || true
+  elif [[ -n "$dev" ]]; then
+    nmcli device connect "$dev" >/dev/null 2>&1 || true
+  fi
+}
+
+log "watch started pid=$$"
+fail=0
+last_notify=0
+while :; do
+  if [[ $(nmcli radio wifi 2>/dev/null) != enabled ]]; then
+    fail=0
+    sleep 30
+    continue
+  fi
+  if eth_up; then
+    fail=0
+    sleep 30
+    continue
+  fi
+  if link_ok; then
+    fail=0
+    sleep 12
+    continue
+  fi
+  fail=$((fail + 1))
+  reconnect
+  sleep 5
+  if link_ok; then
+    log "ok fail=$fail"
+    now=$(date +%s)
+    if (( now - last_notify > 180 )); then
+      omarchy-notification-send -u low "Wi-Fi" "Reconnected (Mac Pro watchdog)" >/dev/null 2>&1 || true
+      last_notify=$now
+    fi
+    fail=0
+    sleep 12
+    continue
+  fi
+  sleep $(( fail > 6 ? 60 : fail * 10 ))
+done

@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Relaunch a Hyprland client on the display or offload FirePro D700.
+# Usage: move-gpu <pid> <display|offload>
+set -euo pipefail
+
+pid="${1:-}"
+target="${2:-}"
+[[ "$pid" =~ ^[0-9]+$ ]] || { echo "pid required" >&2; exit 1; }
+[[ "$target" == display || "$target" == offload ]] || { echo "target display|offload" >&2; exit 1; }
+
+if [[ ! -r "/proc/$pid/cmdline" ]]; then
+  echo "process $pid is gone" >&2
+  exit 1
+fi
+
+mapfile -d '' -t args < "/proc/$pid/cmdline"
+(( ${#args[@]} > 0 )) || { echo "empty cmdline" >&2; exit 1; }
+
+work=$(readlink "/proc/$pid/cwd" 2>/dev/null || echo "$HOME")
+
+if [[ "$target" == offload ]]; then
+  export DRI_PRIME=pci-0000_02_00_0
+  export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+else
+  unset DRI_PRIME || true
+  export DRI_PRIME=0
+  export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+fi
+
+# Close the window first so we do not leave a zombie GL context on the old card.
+hyprctl dispatch closewindow "pid:$pid" >/dev/null 2>&1 || kill -TERM "$pid" 2>/dev/null || true
+for _ in $(seq 1 20); do
+  kill -0 "$pid" 2>/dev/null || break
+  sleep 0.1
+done
+kill -KILL "$pid" 2>/dev/null || true
+
+cd "$work"
+exec setsid uwsm-app -- "${args[@]}"

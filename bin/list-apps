@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+"""List Hyprland clients and which FirePro they currently touch."""
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+SKIP_CLASS = {
+    "",
+    "hyprland",
+    "omarchy-bar",
+    "omarchy-shell",
+    "quickshell",
+    "xdg-desktop-portal-hyprland",
+    "polkit",
+}
+
+DISPLAY_PCI = "0000:06:00.0"
+OFFLOAD_PCI = "0000:02:00.0"
+
+
+def drm_map() -> dict[str, str]:
+    """renderDxxx -> pci address from /sys."""
+    out: dict[str, str] = {}
+    dri = Path("/sys/class/drm")
+    if not dri.is_dir():
+        return out
+    for card in dri.glob("card[0-9]"):
+        pci = (card / "device").resolve()
+        # .../0000:06:00.0
+        pci_id = pci.name
+        for node in card.parent.glob("renderD*"):
+            try:
+                if (node / "device").resolve() == pci:
+                    out[node.name] = pci_id
+            except OSError:
+                continue
+        # cardN also maps
+        out[card.name] = pci_id
+    return out
+
+
+def environ_prime(pid: int) -> str:
+    try:
+        raw = Path(f"/proc/{pid}/environ").read_bytes()
+    except OSError:
+        return ""
+    for item in raw.split(b"\0"):
+        if item.startswith(b"DRI_PRIME="):
+            return item.split(b"=", 1)[1].decode("utf-8", "replace")
+    return ""
+
+
+def render_nodes(pid: int) -> set[str]:
+    found: set[str] = set()
+    fd_dir = Path(f"/proc/{pid}/fd")
+    try:
+        entries = list(fd_dir.iterdir())
+    except OSError:
+        return found
+    for fd in entries:
+        try:
+            target = os.readlink(fd)
+        except OSError:
+            continue
+        name = Path(target).name
+        if name.startswith("renderD") or name.startswith("card"):
+            found.add(name)
+    return found
+
+
+def gpu_for_pid(pid: int, drm: dict[str, str]) -> str:
+    prime = environ_prime(pid)
+    if "02_00_0" in prime.replace(":", "_") or prime in {"1", "pci-0000_02_00_0"}:
+        return "offload"
+    nodes = render_nodes(pid)
+    pcis = {drm.get(n, "") for n in nodes}
+    if DISPLAY_PCI in pcis and OFFLOAD_PCI not in pcis:
+        return "display"
+    if OFFLOAD_PCI in pcis:
+        return "offload"
+    if DISPLAY_PCI in pcis:
+        return "display"
+    return "display"
+
+
+def cmdline(pid: int) -> str:
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except OSError:
+        return ""
+    return raw.replace(b"\0", b" ").decode("utf-8", "replace").strip()
+
+
+def cwd(pid: int) -> str:
+    try:
+        return os.readlink(f"/proc/{pid}/cwd")
+    except OSError:
+        return str(Path.home())
+
+
+def main() -> int:
+    try:
+        clients = json.loads(subprocess.check_output(["hyprctl", "clients", "-j"], text=True))
+    except (OSError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+        print(json.dumps({"ok": False, "error": str(exc), "apps": []}))
+        return 0
+
+    drm = drm_map()
+    apps = []
+    seen: set[int] = set()
+    for c in clients:
+        pid = int(c.get("pid") or 0)
+        cls = str(c.get("class") or "")
+        if pid <= 0 or pid in seen:
+            continue
+        if cls.lower() in SKIP_CLASS:
+            continue
+        seen.add(pid)
+        gpu = gpu_for_pid(pid, drm)
+        title = str(c.get("title") or cls)
+        apps.append(
+            {
+                "pid": pid,
+                "class": cls,
+                "title": title[:80],
+                "gpu": gpu,
+                "other": "offload" if gpu == "display" else "display",
+                "cmdline": cmdline(pid),
+                "cwd": cwd(pid),
+                "workspace": str(c.get("workspace", {}).get("name") or ""),
+            }
+        )
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "error": "",
+                "displayPci": DISPLAY_PCI,
+                "offloadPci": OFFLOAD_PCI,
+                "apps": apps,
+            }
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

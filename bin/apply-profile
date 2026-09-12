@@ -1,0 +1,182 @@
+#!/usr/bin/env bash
+# One-shot 2013 Mac Pro (MacPro6,1) Omarchy profile.
+# Privilege: re-execs sudo for system pieces; user pieces run as SUDO_USER.
+set -euo pipefail
+
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MARKER="nomdelasociete.macpro"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy"
+STATE_FILE="$STATE_DIR/macpro-profile"
+
+if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+  exec sudo --preserve-env=HOME,SUDO_USER "$0" "$@"
+fi
+
+TARGET_USER="${SUDO_USER:-}"
+[[ -n "$TARGET_USER" && "$TARGET_USER" != root ]] || {
+  echo "Run from your user session (sudo), not a root login." >&2
+  exit 1
+}
+TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
+TARGET_UID="$(id -u "$TARGET_USER")"
+
+product="$(tr -d '\0' </sys/class/dmi/id/product_name 2>/dev/null || true)"
+if [[ "$product" != "MacPro6,1" ]]; then
+  echo "This profile is for MacPro6,1 (2013 cylinder). This machine is: ${product:-unknown}"
+  echo "Continue only if you know you have dual FirePro D300/D500/D700."
+  read -r -p "Continue anyway? [y/N] " ans
+  [[ "$ans" == y || "$ans" == Y ]] || exit 1
+fi
+
+echo "==> Detecting FirePro GPUs"
+mapfile -t gpus < <(
+  for d in /sys/bus/pci/devices/*; do
+    [[ -r "$d/vendor" && -r "$d/class" ]] || continue
+    [[ $(cat "$d/vendor") == 0x1002 ]] || continue
+    [[ $(cat "$d/class") == 0x03* ]] || continue
+    echo "${d##*/}"
+  done | sort
+)
+if ((${#gpus[@]} < 2)); then
+  echo "Need two AMD GPUs, found ${#gpus[@]}." >&2
+  exit 1
+fi
+
+display_pci=""
+offload_pci=""
+for pci in "${gpus[@]}"; do
+  card="$(basename "$(readlink -f /sys/bus/pci/devices/$pci/drm/card* 2>/dev/null | head -1)")"
+  [[ "$card" == card* ]] || continue
+  connected=0
+  for conn in /sys/class/drm/${card}-*/status; do
+    [[ -r "$conn" ]] || continue
+    [[ $(cat "$conn") == connected ]] && connected=1
+  done
+  if [[ $connected -eq 1 && -z "$display_pci" ]]; then
+    display_pci="$pci"
+  else
+    offload_pci="${offload_pci:-$pci}"
+  fi
+done
+display_pci="${display_pci:-${gpus[-1]}}"
+offload_pci="${offload_pci:-${gpus[0]}}"
+[[ "$display_pci" == "$offload_pci" ]] && offload_pci="${gpus[0]}"
+echo "    display $display_pci   offload $offload_pci"
+
+echo "==> Colon-free DRM names (never PCI by-path in AQ_DRM_DEVICES)"
+cat >/etc/udev/rules.d/99-${MARKER}.rules <<EOF
+# $MARKER — short names; Aquamarine splits AQ_DRM_DEVICES on ':'
+KERNEL=="card*", SUBSYSTEM=="drm", KERNELS=="$display_pci", SYMLINK+="dri/d700-display"
+KERNEL=="card*", SUBSYSTEM=="drm", KERNELS=="$offload_pci", SYMLINK+="dri/d700-offload"
+EOF
+udevadm control --reload-rules
+udevadm trigger --subsystem-match=drm --action=add
+sleep 0.5
+
+echo "==> Sleep: RAM-suspend stays off; Hibernate is the Sleep that can wake GPUs"
+systemctl mask suspend.target >/dev/null
+systemctl unmask sleep.target hibernate.target >/dev/null 2>&1 || true
+mkdir -p /etc/systemd/logind.conf.d
+cat >/etc/systemd/logind.conf.d/00-${MARKER}-sleep.conf <<EOF
+# $MARKER
+[Login]
+HandleSuspendKey=hibernate
+HandleSuspendKeyLongPress=ignore
+IdleAction=ignore
+EOF
+systemctl kill -s HUP systemd-logind.service 2>/dev/null || true
+
+echo "==> Resume hook: retrain DisplayPort, never restart Hyprland"
+install -m 755 "$PLUGIN_DIR/bin/dp-retrain" /usr/lib/systemd/system-sleep/${MARKER}-dp-retrain
+
+echo "==> Login keyboard from vconsole (SDDM greeter)"
+layout="$(awk -F= '/^XKBLAYOUT=/{gsub(/"/,"");print $2}' /etc/vconsole.conf 2>/dev/null || true)"
+layout="${layout:-us}"
+install -d -m 755 /etc/sddm /etc/sddm.conf.d
+cat >/etc/sddm/hyprland.lua <<EOF
+-- $MARKER
+dofile("/usr/share/sddm/hyprland.lua")
+hl.config({ input = { kb_layout = "$layout", kb_model = "pc105" } })
+EOF
+cat >/etc/sddm.conf.d/11-${MARKER}-keyboard.conf <<EOF
+# $MARKER
+[General]
+GreeterEnvironment=XKB_DEFAULT_LAYOUT=$layout,XKB_DEFAULT_MODEL=pc105
+[Wayland]
+CompositorCommand=start-hyprland -- --config /etc/sddm/hyprland.lua
+EOF
+
+echo "==> User session (DRM env, Wi-Fi watchdog, RADV)"
+install -d -m 755 "$TARGET_HOME/.config/uwsm" \
+  "$TARGET_HOME/.config/hypr" \
+  "$TARGET_HOME/.config/systemd/user" \
+  "$TARGET_HOME/.local/bin" \
+  "$STATE_DIR"
+
+uwsm="$TARGET_HOME/.config/uwsm/env-hyprland"
+touch "$uwsm"
+grep -v 'AQ_DRM_DEVICES\|AQ_NO_ATOMIC' "$uwsm" >"${uwsm}.tmp" || true
+cat >>"${uwsm}.tmp" <<EOF
+# $MARKER — colon-free udev names only
+export AQ_DRM_DEVICES=/dev/dri/d700-display:/dev/dri/d700-offload
+export AQ_NO_ATOMIC=1
+EOF
+mv "${uwsm}.tmp" "$uwsm"
+chown "$TARGET_USER:$TARGET_USER" "$uwsm"
+
+cat >"$TARGET_HOME/.config/hypr/${MARKER}.lua" <<'EOF'
+-- Managed by nomdelasociete.macpro Apply. Do not put AQ_DRM_DEVICES here.
+hl.env("LIBVA_DRIVER_NAME", "radeonsi")
+hl.env("VDPAU_DRIVER", "radeonsi")
+hl.env("AMD_VULKAN_ICD", "RADV")
+hl.env("VK_ICD_FILENAMES", "/usr/share/vulkan/icd.d/radeon_icd.json")
+hl.config({ cursor = { no_hardware_cursors = 1 } })
+EOF
+chown "$TARGET_USER:$TARGET_USER" "$TARGET_HOME/.config/hypr/${MARKER}.lua"
+
+hypr="$TARGET_HOME/.config/hypr/hyprland.lua"
+if [[ -f "$hypr" ]] && ! grep -q "$MARKER.lua" "$hypr"; then
+  printf '\n-- %s\ndofile(os.getenv("HOME") .. "/.config/hypr/%s.lua")\n' "$MARKER" "$MARKER" >>"$hypr"
+fi
+
+install -m 755 "$PLUGIN_DIR/bin/wifi-watch" "$TARGET_HOME/.local/bin/omarchy-macpro-wifi-watch"
+install -m 755 "$PLUGIN_DIR/bin/display-mode" "$TARGET_HOME/.local/bin/omarchy-macpro-display-mode"
+install -m 755 "$PLUGIN_DIR/bin/d700" "$TARGET_HOME/.local/bin/d700"
+cat >"$TARGET_HOME/.config/systemd/user/${MARKER}-wifi-watch.service" <<EOF
+[Unit]
+Description=Mac Pro Broadcom Wi-Fi reconnect watchdog
+After=graphical-session.target NetworkManager.service
+PartOf=graphical-session.target
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/omarchy-macpro-wifi-watch
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=graphical-session.target
+EOF
+chown -R "$TARGET_USER:$TARGET_USER" \
+  "$TARGET_HOME/.local/bin/omarchy-macpro-wifi-watch" \
+  "$TARGET_HOME/.local/bin/omarchy-macpro-display-mode" \
+  "$TARGET_HOME/.local/bin/d700" \
+  "$TARGET_HOME/.config/systemd/user/${MARKER}-wifi-watch.service"
+
+runuser -u "$TARGET_USER" -- env XDG_RUNTIME_DIR="/run/user/$TARGET_UID" \
+  systemctl --user daemon-reload
+runuser -u "$TARGET_USER" -- env XDG_RUNTIME_DIR="/run/user/$TARGET_UID" \
+  systemctl --user enable --now ${MARKER}-wifi-watch.service >/dev/null
+
+mkdir -p "$STATE_DIR"
+cat >"$STATE_FILE" <<EOF
+applied=$(date -Iseconds)
+display_pci=$display_pci
+offload_pci=$offload_pci
+product=$product
+EOF
+chown "$TARGET_USER:$TARGET_USER" "$STATE_FILE"
+
+echo
+echo "Applied. Log out once so AQ_DRM_DEVICES and udev names take effect."
+echo "Sleep: use Hibernate (or the power menu). Do not use Suspend."
+echo "Bar widget: click a window to relaunch it on the other GPU."
+echo "Super+Alt+M toggles sharp vs 60 Hz on the current cable."

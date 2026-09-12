@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+import json, os, subprocess
+from pathlib import Path
+
+home = Path.home()
+state = Path(os.environ.get("XDG_STATE_HOME", home / ".local/state")) / "omarchy" / "macpro-profile"
+product = ""
+p = Path("/sys/class/dmi/id/product_name")
+if p.is_file():
+    product = p.read_text(errors="replace").strip()
+
+def sysctl(kind, unit):
+    try:
+        r = subprocess.run(["systemctl", kind, unit], capture_output=True, text=True)
+        return (r.stdout or r.stderr).strip().split("\n")[0]
+    except OSError:
+        return "unknown"
+
+def user_active(unit):
+    r = subprocess.run(["systemctl", "--user", "is-active", unit], capture_output=True, text=True)
+    return r.returncode == 0
+
+print(json.dumps({
+    "ok": True,
+    "applied": state.is_file(),
+    "product": product,
+    "isMacPro61": product == "MacPro6,1",
+    "suspend": sysctl("is-enabled", "suspend.target"),
+    "hibernate": sysctl("is-enabled", "hibernate.target"),
+    "udevNames": Path("/dev/dri/d700-display").exists() or Path("/dev/dri/d700-offload").exists(),
+    "wifiWatch": user_active("nomdelasociete.macpro-wifi-watch.service"),
+}))

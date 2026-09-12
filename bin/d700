@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Run a command on the offload FirePro (non-display GPU).
+set -euo pipefail
+prime="pci-0000_02_00_0"
+if [[ -e /sys/class/drm/d700-offload ]]; then
+  # resolve PCI from the udev name
+  pci="$(basename "$(readlink -f /sys/class/drm/d700-offload/device 2>/dev/null || true)")"
+  [[ "$pci" == 0000:* ]] && prime="pci-${pci//:/_}"
+fi
+exec env DRI_PRIME="$prime" VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json "$@"
