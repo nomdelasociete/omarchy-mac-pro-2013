@@ -17,6 +17,7 @@ Item {
   property int offloadCount: 0
   property int displayCount: 0
   property bool profileApplied: false
+  property bool needsReboot: false
   property bool isMacPro: false
   property string product: ""
   property string sleepSummary: ""
@@ -108,9 +109,11 @@ Item {
         return
       }
       profileApplied = s.applied === true
+      needsReboot = s.needsReboot === true
       isMacPro = s.isMacPro61 === true
       product = String(s.product || "")
       var bits = []
+      if (s.needsReboot) bits.push("reboot when this job is done")
       bits.push("Suspend " + String(s.suspend || "?"))
       bits.push("Hibernate " + String(s.hibernate || "?"))
       if (s.udevNames) bits.push("DRM names ok")

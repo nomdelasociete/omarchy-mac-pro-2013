@@ -5,8 +5,6 @@ set -euo pipefail
 
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MARKER="nomdelasociete.macpro"
-STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy"
-STATE_FILE="$STATE_DIR/macpro-profile"
 
 if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   exec sudo --preserve-env=HOME,SUDO_USER "$0" "$@"
@@ -19,6 +17,8 @@ TARGET_USER="${SUDO_USER:-}"
 }
 TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
 TARGET_UID="$(id -u "$TARGET_USER")"
+STATE_DIR="$TARGET_HOME/.local/state/omarchy"
+STATE_FILE="$STATE_DIR/macpro-profile"
 
 product="$(tr -d '\0' </sys/class/dmi/id/product_name 2>/dev/null || true)"
 if [[ "$product" != "MacPro6,1" ]]; then
@@ -176,7 +176,6 @@ EOF
 chown "$TARGET_USER:$TARGET_USER" "$STATE_FILE"
 
 echo
-echo "Applied. Log out once so AQ_DRM_DEVICES and udev names take effect."
-echo "Sleep: use Hibernate (or the power menu). Do not use Suspend."
-echo "Bar widget: click a window to relaunch it on the other GPU."
-echo "Super+Alt+M toggles sharp vs 60 Hz on the current cable."
+echo "Applied. Finish what you are doing, then reboot (not logout) so the GPU names attach."
+echo "Sleep: Hibernate in the power menu. Do not use Suspend."
+echo "Bar: relaunch a window on the other GPU. Super+Alt+M toggles 30/60 Hz."

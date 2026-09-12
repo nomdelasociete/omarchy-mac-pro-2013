@@ -218,10 +218,13 @@ Panel {
             PanelHero {
               id: hero
               width: parent.width
-              title: macpro.profileApplied ? "Trashcan" : "Keep the cylinder alive"
-              meta: macpro.profileApplied
-                    ? (macpro.sleepSummary + (macpro.offloadCount > 0 ? (" · " + macpro.offloadCount + " on GPU 2") : " · 2013 Mac Pro"))
-                    : "One Apply. Dual FirePro, sleep, Wi-Fi. This is the whole setup."
+              title: !macpro.profileApplied ? "Keep the cylinder alive"
+                    : (macpro.needsReboot ? "Applied — reboot when ready" : "Trashcan")
+              meta: !macpro.profileApplied
+                    ? "One Apply. Dual FirePro, sleep, Wi-Fi. This is the whole setup."
+                    : (macpro.needsReboot
+                       ? "Profile is in. Finish this job, then reboot (not logout)."
+                       : (macpro.sleepSummary + (macpro.offloadCount > 0 ? (" · " + macpro.offloadCount + " on GPU 2") : " · 2013 Mac Pro")))
               foreground: root.foreground
               fontFamily: root.fontFamily
               iconComponent: Component {
@@ -287,7 +290,20 @@ Panel {
           }
 
           Text {
-            visible: macpro.profileApplied
+            visible: macpro.profileApplied && macpro.needsReboot
+            textFormat: Text.PlainText
+            width: parent.width
+            leftPadding: Style.space(10)
+            rightPadding: Style.space(10)
+            text: "Do not log out now. Reboot later so the GPU names attach. Windows below already work on this session."
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            wrapMode: Text.WordWrap
+          }
+
+          Text {
+            visible: macpro.profileApplied && !macpro.needsReboot
             textFormat: Text.PlainText
             width: parent.width
             leftPadding: Style.space(10)

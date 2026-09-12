@@ -3,7 +3,7 @@ import json, os, subprocess
 from pathlib import Path
 
 home = Path.home()
-state = Path(os.environ.get("XDG_STATE_HOME", home / ".local/state")) / "omarchy" / "macpro-profile"
+state = Path(home) / ".local/state/omarchy/macpro-profile"
 product = ""
 p = Path("/sys/class/dmi/id/product_name")
 if p.is_file():
@@ -20,13 +20,41 @@ def user_active(unit):
     r = subprocess.run(["systemctl", "--user", "is-active", unit], capture_output=True, text=True)
     return r.returncode == 0
 
+udev = Path("/dev/dri/d700-display").exists() or Path("/dev/dri/d700-offload").exists()
+uwsm = Path.home() / ".config/uwsm/env-hyprland"
+uwsm_ok = False
+if uwsm.is_file():
+    uwsm_ok = "d700-display" in uwsm.read_text(errors="replace")
+
+live = False
+try:
+    pids = subprocess.check_output(["pgrep", "-x", "Hyprland"], text=True).split()
+except subprocess.CalledProcessError:
+    pids = []
+for pid in pids:
+    envp = Path(f"/proc/{pid}/environ")
+    if not envp.is_file():
+        continue
+    try:
+        env = envp.read_bytes().replace(b"\0", b"\n").decode("utf-8", "replace")
+    except OSError:
+        continue
+    if "d700-display" in env:
+        live = True
+        break
+
+applied = state.is_file() or udev or uwsm_ok
+needs_reboot = applied and not live
+
 print(json.dumps({
     "ok": True,
-    "applied": state.is_file(),
+    "applied": applied,
+    "needsReboot": needs_reboot,
+    "live": live,
     "product": product,
     "isMacPro61": product == "MacPro6,1",
     "suspend": sysctl("is-enabled", "suspend.target"),
     "hibernate": sysctl("is-enabled", "hibernate.target"),
-    "udevNames": Path("/dev/dri/d700-display").exists() or Path("/dev/dri/d700-offload").exists(),
+    "udevNames": udev,
     "wifiWatch": user_active("nomdelasociete.macpro-wifi-watch.service"),
 }))
