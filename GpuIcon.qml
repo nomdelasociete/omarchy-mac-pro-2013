@@ -8,7 +8,7 @@ Item {
   property real iconSize: Style.font.icon
   property color color: Color.foreground
   property bool offloadActive: false
-  property color cut: Color.background
+  property color cut: Qt.rgba(0, 0, 0, 0.55)
 
   width: iconSize
   height: iconSize

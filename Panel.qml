@@ -134,12 +134,13 @@ Panel {
     anchors.fill: parent
     bar: root.bar
     iconComponent: Component {
-      GpuIcon {
-        anchors.centerIn: parent
-        iconSize: parent ? Math.min(parent.width, parent.height) : Style.bar.iconCanvas
-        color: root.foreground
-        cut: Color.bar.background
-        offloadActive: root.offloadBusy
+      Item {
+        GpuIcon {
+          anchors.centerIn: parent
+          iconSize: Style.font.icon
+          color: root.foreground
+          offloadActive: root.offloadBusy
+        }
       }
     }
     onPressed: function(buttonCode) {
@@ -208,7 +209,6 @@ Panel {
                 GpuIcon {
                   iconSize: Style.font.display
                   color: root.foreground
-                  cut: Color.popups.background
                   offloadActive: root.offloadBusy
                 }
               }
@@ -362,7 +362,6 @@ Panel {
       GpuIcon {
         iconSize: Style.font.icon
         color: root.foreground
-        cut: Color.popups.background
         offloadActive: appRow.app && appRow.app.gpu === "offload"
         Layout.alignment: Qt.AlignVCenter
       }
