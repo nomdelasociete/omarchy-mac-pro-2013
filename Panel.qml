@@ -133,13 +133,32 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
+    text: "O"
     iconComponent: Component {
       Item {
+        implicitWidth: Style.bar.iconCanvas
+        implicitHeight: Style.bar.iconCanvas
+        width: Style.bar.iconCanvas
+        height: Style.bar.iconCanvas
+
+        Image {
+          id: mark
+          anchors.centerIn: parent
+          width: parent.width
+          height: parent.height
+          source: Qt.resolvedUrl("icon.png")
+          sourceSize.width: parent.width * 2
+          sourceSize.height: parent.height * 2
+          fillMode: Image.PreserveAspectFit
+          visible: status === Image.Ready
+        }
+
         GpuIcon {
           anchors.centerIn: parent
-          iconSize: Style.font.icon
+          iconSize: parent.width
           color: root.foreground
           offloadActive: root.offloadBusy
+          visible: mark.status !== Image.Ready
         }
       }
     }

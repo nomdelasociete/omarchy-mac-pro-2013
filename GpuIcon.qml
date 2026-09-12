@@ -12,19 +12,17 @@ Item {
 
   width: iconSize
   height: iconSize
-  implicitWidth: iconSize
-  implicitHeight: iconSize
 
   readonly property real bw: width * 0.72
   readonly property real bx: (width - bw) / 2
   readonly property real cap: bw * 0.38
-  readonly property real top: height * 0.06
+  readonly property real lidY: height * 0.06
   readonly property real bodyH: height * 0.70
 
   // Bottom cap
   Rectangle {
     x: root.bx
-    y: root.top + root.bodyH - root.cap * 0.15
+    y: root.lidY + root.bodyH - root.cap * 0.15
     width: root.bw
     height: root.cap
     radius: height / 2
@@ -34,7 +32,7 @@ Item {
   // Body
   Rectangle {
     x: root.bx
-    y: root.top + root.cap * 0.42
+    y: root.lidY + root.cap * 0.42
     width: root.bw
     height: root.bodyH - root.cap * 0.20
     color: root.color
@@ -44,7 +42,7 @@ Item {
   Rectangle {
     id: lid
     x: root.bx
-    y: root.top
+    y: root.lidY
     width: root.bw
     height: root.cap
     radius: height / 2
@@ -64,7 +62,7 @@ Item {
   // Specular slash
   Rectangle {
     x: root.bx + root.bw * 0.16
-    y: root.top + root.cap * 0.85
+    y: root.lidY + root.cap * 0.85
     width: Math.max(1.6, root.iconSize * 0.08)
     height: root.bodyH * 0.48
     radius: width / 2
