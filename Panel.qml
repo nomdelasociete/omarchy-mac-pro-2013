@@ -219,7 +219,7 @@ Panel {
               id: hero
               width: parent.width
               title: !macpro.profileApplied ? "Keep the cylinder alive"
-                    : (macpro.needsReboot ? "Applied — reboot when ready" : "Trashcan")
+                    : (macpro.needsReboot ? "Applied — reboot when ready" : "Mac Pro 2013")
               meta: !macpro.profileApplied
                     ? "One Apply. Dual FirePro, sleep, Wi-Fi. This is the whole setup."
                     : (macpro.needsReboot

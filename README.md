@@ -1,6 +1,6 @@
-# Trashcan — Mac Pro 2013 for Omarchy
+# Mac Pro 2013
 
-The **one** setup for a 2013 Mac Pro (trashcan / MacPro6,1) on Omarchy.
+The one Omarchy setup for the Late 2013 Mac Pro (MacPro6,1) — the cylinder.
 
 Everyone else with this machine either:
 

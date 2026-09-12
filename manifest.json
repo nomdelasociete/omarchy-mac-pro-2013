@@ -2,17 +2,17 @@
   "schemaVersion": 1,
   "id": "nomdelasociete.macpro",
   "name": "Mac Pro 2013",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "Nom de la Société",
   "license": "MIT",
-  "description": "The Omarchy setup for a 2013 Mac Pro trashcan: dual FirePro, sleep, Wi-Fi, login keymap. Apply from the bar.",
+  "description": "Setup for the 2013 Mac Pro (MacPro6,1): dual FirePro, sleep, Wi-Fi, login keymap. Apply from the bar.",
   "kinds": ["bar-widget"],
   "entryPoints": {
     "barWidget": "Panel.qml"
   },
   "barWidget": {
     "displayName": "Mac Pro 2013",
-    "description": "Apply the trashcan profile; relaunch windows on the other FirePro.",
+    "description": "Apply the 2013 Mac Pro profile; relaunch windows on the other FirePro.",
     "category": "Hardware",
     "aliases": ["gpu", "macpro", "d700", "prime"],
     "allowMultiple": false,
