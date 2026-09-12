@@ -1,83 +1,59 @@
 import QtQuick
 import qs.Commons
 
-// 2013 Mac Pro cylinder as an Omarchy mark: theme fill, lid + vent band.
+// Original mark in the Noun-style Mac Pro language: outline cylinder,
+// lid ellipse, one highlight. Theme stroke. Reads at bar size.
 Item {
   id: root
 
   property real iconSize: Style.font.icon
   property color color: Color.foreground
   property bool offloadActive: false
-  property color cut: Color.background
 
   width: iconSize
   height: iconSize
   implicitWidth: iconSize
   implicitHeight: iconSize
 
-  readonly property real bw: width * 0.56
-  readonly property real cx: (width - bw) / 2
-  readonly property real cap: bw * 0.34
-  readonly property real top: height * 0.10
-  readonly property real bodyTop: top + cap * 0.45
-  readonly property real bodyH: height * 0.72
+  readonly property real sw: Math.max(1.4, iconSize * 0.09)
+  readonly property real bw: width * 0.62
+  readonly property real bh: height * 0.86
+  readonly property real bx: (width - bw) / 2
+  readonly property real by: (height - bh) / 2
+  readonly property real cap: bw * 0.36
 
+  // Body outline (stadium / cylinder)
   Rectangle {
-    x: root.cx
-    y: root.bodyTop
+    x: root.bx
+    y: root.by
     width: root.bw
-    height: root.bodyH
-    color: root.color
-    radius: 1
+    height: root.bh
+    radius: root.bw / 2
+    color: "transparent"
+    border.color: root.color
+    border.width: root.sw
   }
 
+  // Lid ellipse
   Rectangle {
-    x: root.cx
-    y: root.top + root.bodyH + root.cap * 0.15
-    width: root.bw
-    height: root.cap
+    x: root.bx + root.bw * 0.16
+    y: root.by + root.bh * 0.16
+    width: root.bw * 0.68
+    height: root.cap * 0.72
     radius: height / 2
-    color: root.color
+    color: "transparent"
+    border.color: root.color
+    border.width: root.sw
   }
 
+  // Specular highlight
   Rectangle {
-    id: lid
-    x: root.cx
-    y: root.top
-    width: root.bw
-    height: root.cap
-    radius: height / 2
+    x: root.bx + root.bw * 0.28
+    y: root.by + root.bh * 0.38
+    width: root.sw
+    height: root.bh * 0.34
+    radius: width / 2
     color: root.color
-  }
-
-  Rectangle {
-    anchors.centerIn: lid
-    width: lid.width * 0.70
-    height: lid.height * 0.42
-    radius: height / 2
-    color: root.cut
-    opacity: 0.35
-  }
-
-  Row {
-    id: vents
-    visible: root.iconSize >= 12
-    x: root.cx + root.bw * 0.10
-    y: root.bodyTop + root.cap * 0.28
-    width: root.bw * 0.80
-    spacing: Math.max(1, (width - (repeater.count * dotW)) / Math.max(1, repeater.count - 1))
-    readonly property real dotW: Math.max(1.4, root.iconSize * 0.07)
-
-    Repeater {
-      id: repeater
-      model: root.iconSize >= 18 ? 9 : 6
-      Rectangle {
-        width: vents.dotW
-        height: width
-        radius: width / 2
-        color: root.cut
-        opacity: 0.85
-      }
-    }
+    opacity: root.offloadActive ? 1 : 0.9
   }
 }
