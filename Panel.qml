@@ -199,10 +199,10 @@ Panel {
             PanelHero {
               id: hero
               width: parent.width
-              title: "Mac Pro 2013"
+              title: macpro.profileApplied ? "Trashcan" : "Keep the cylinder alive"
               meta: macpro.profileApplied
-                    ? (macpro.sleepSummary + (macpro.offloadCount > 0 ? (" · " + macpro.offloadCount + " on GPU 2") : ""))
-                    : "Apply the profile — GPU, sleep, Wi-Fi, login keymap"
+                    ? (macpro.sleepSummary + (macpro.offloadCount > 0 ? (" · " + macpro.offloadCount + " on GPU 2") : " · 2013 Mac Pro"))
+                    : "One Apply. Dual FirePro, sleep, Wi-Fi. This is the whole setup."
               foreground: root.foreground
               fontFamily: root.fontFamily
               iconComponent: Component {
@@ -228,39 +228,56 @@ Panel {
             wrapMode: Text.WordWrap
           }
 
+          Column {
+            visible: !macpro.profileApplied
+            width: parent.width
+            spacing: Style.space(6)
+
+            Text {
+              textFormat: Text.PlainText
+              width: parent.width
+              leftPadding: Style.space(10)
+              rightPadding: Style.space(10)
+              text: "Both GPUs. Sleep that can wake. Wi-Fi that comes back.\nNo DRM login loop. No manual ritual."
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              wrapMode: Text.Wrap
+            }
+
+            CursorSurface {
+              width: parent.width
+              implicitHeight: Style.space(40)
+              foreground: root.foreground
+              hasCursor: false
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: macpro.applyProfile()
+              }
+              Text {
+                textFormat: Text.PlainText
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: Style.space(10)
+                text: "Apply profile  ·  sudo in a terminal"
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+              }
+            }
+          }
+
           Text {
+            visible: macpro.profileApplied
             textFormat: Text.PlainText
             width: parent.width
             leftPadding: Style.space(10)
             rightPadding: Style.space(10)
-            text: macpro.profileApplied
-                  ? "Relaunch a window on the other D700. Sleep = Hibernate (not Suspend). Super+Alt+M = 30/60 Hz."
-                  : "One Apply (sudo in a terminal) replaces the manual Mac Pro ritual. Plugin add never touches DRM by itself."
+            text: "Click a window to relaunch it on the other FirePro. Sleep is Hibernate. Super+Alt+M toggles 30/60 Hz."
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
             wrapMode: Text.WordWrap
-          }
-
-          CursorSurface {
-            width: parent.width
-            implicitHeight: Style.space(36)
-            foreground: root.foreground
-            hasCursor: false
-            visible: !macpro.profileApplied
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: macpro.applyProfile()
-            }
-            Text {
-              anchors.verticalCenter: parent.verticalCenter
-              leftPadding: Style.space(10)
-              text: "Apply Mac Pro profile…"
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.body
-            }
           }
 
           CursorSurface {

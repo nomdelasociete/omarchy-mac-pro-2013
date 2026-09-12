@@ -1,4 +1,4 @@
-# Mac Pro 2013 for Omarchy
+# Trashcan — Mac Pro 2013 for Omarchy
 
 The **one** setup for a 2013 Mac Pro (trashcan / MacPro6,1) on Omarchy.
 
