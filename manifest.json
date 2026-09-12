@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "nomdelasociete.macpro",
   "name": "Mac Pro 2013",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "author": "Nom de la Société",
   "license": "MIT",
   "description": "Setup for the 2013 Mac Pro (MacPro6,1): dual FirePro, sleep, Wi-Fi, login keymap. Apply from the bar.",

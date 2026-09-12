@@ -37,35 +37,35 @@ Item {
   readonly property string listBin: pluginDir + "/bin/list-apps"
   readonly property string moveBin: pluginDir + "/bin/move-gpu"
   readonly property string statusBin: pluginDir + "/bin/status"
-  readonly property string applyBin: pluginDir + "/bin/apply-profile"
-  readonly property string removeBin: pluginDir + "/bin/remove-profile"
+  readonly property string applyBin: pluginDir + "/bin/user-apply"
+  readonly property string removeBin: pluginDir + "/bin/user-remove"
 
   function refresh() {
     if (listProc.running) return
     lastError = ""
     refreshing = true
-    listProc.command = [listBin]
+    listProc.command = ["/usr/bin/timeout", "8", listBin]
     listProc.running = true
     if (!statusProc.running) {
-      statusProc.command = [statusBin]
+      statusProc.command = ["/usr/bin/timeout", "5", statusBin]
       statusProc.running = true
     }
   }
 
   function applyProfile() {
     actionStatus = "Apply: sudo in the terminal…"
-    Quickshell.execDetached(["omarchy-launch-floating-terminal-with-presentation", applyBin])
+    Quickshell.execDetached(["/usr/bin/omarchy-launch-floating-terminal-with-presentation", applyBin])
   }
 
   function removeProfile() {
     actionStatus = "Remove: sudo in the terminal…"
-    Quickshell.execDetached(["omarchy-launch-floating-terminal-with-presentation", removeBin])
+    Quickshell.execDetached(["/usr/bin/omarchy-launch-floating-terminal-with-presentation", removeBin])
   }
 
   function toggleWifiWatch() {
     var on = !wifiWatch
     wifiWatch = on
-    wifiProc.command = ["systemctl", "--user", on ? "enable" : "disable", "--now", "nomdelasociete.macpro-wifi-watch.service"]
+    wifiProc.command = ["/usr/bin/systemctl", "--user", on ? "enable" : "disable", "--now", "nomdelasociete.macpro-wifi-watch.service"]
     wifiProc.running = true
   }
 
@@ -75,7 +75,7 @@ Item {
     moving = true
     actionStatus = "Relaunching on " + target + "…"
     lastError = ""
-    moveProc.command = [moveBin, String(app.pid), target]
+    moveProc.command = ["/usr/bin/timeout", "15", moveBin, String(app.pid), target]
     moveProc.running = true
   }
 

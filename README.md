@@ -12,7 +12,9 @@ then **Apply Mac Pro profile** from the bar (sudo in a terminal) —
 
 or they do the DRM / sleep / Wi-Fi / keymap ritual by hand. Don’t.
 
-`omarchy plugin add` clones files only. It does **not** sudo, and it does **not** write `AQ_DRM_DEVICES`. Apply does.
+`omarchy plugin add` clones files only. It does **not** sudo, and it does **not** write `AQ_DRM_DEVICES`.
+
+Apply is a **user** script: it writes your session files, then `sudo install`s helpers into **root-owned** `/usr/local/libexec/nomdelasociete-macpro/` and runs **that** copy with `env -i PATH=/usr/bin:/usr/sbin`. Root never executes the plugin checkout.
 
 ## What Apply does
 

@@ -1,0 +1,100 @@
+#!/bin/bash
+# User-side Apply. Never run as root. Copies helpers to a root-owned path,
+# then sudo-executes THAT path with a closed environment.
+set -euo pipefail
+export PATH=/usr/bin:/usr/sbin
+if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+  echo "user-apply must not run as root." >&2
+  exit 1
+fi
+
+PLUGIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DEST=/usr/local/libexec/nomdelasociete-macpro
+SUDO=/usr/bin/sudo
+INSTALL=/usr/bin/install
+ENV=/usr/bin/env
+MARKER=nomdelasociete.macpro
+HOME_REAL="$(/usr/bin/realpath "$HOME")"
+case "$HOME_REAL" in
+  /home/*) ;;
+  *) echo "Refusing unexpected HOME=$HOME_REAL" >&2; exit 1 ;;
+esac
+
+echo "==> User files (no sudo)"
+install -d -m 755 "$HOME/.config/uwsm" "$HOME/.config/hypr" \
+  "$HOME/.config/systemd/user" "$HOME/.local/bin" \
+  "$HOME/.local/state/omarchy" "$HOME/.config/omarchy" \
+  "$HOME/.local/state/omarchy/indicators"
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+p = Path.home() / ".config/omarchy/shell.json"
+d = json.loads(p.read_text()) if p.is_file() else {"version": 1}
+d.setdefault("idle", {})
+d["idle"]["screensaver"] = 150
+d["idle"]["lock"] = 300
+p.write_text(json.dumps(d, indent=2) + "\n")
+PY
+rm -f "$HOME/.local/state/omarchy/indicators/stay-awake"
+
+uwsm="$HOME/.config/uwsm/env-hyprland"
+touch "$uwsm"
+grep -v 'AQ_DRM_DEVICES\|AQ_NO_ATOMIC' "$uwsm" >"${uwsm}.new" || true
+cat >>"${uwsm}.new" <<EOF
+# $MARKER
+export AQ_DRM_DEVICES=/dev/dri/d700-display:/dev/dri/d700-offload
+export AQ_NO_ATOMIC=1
+EOF
+mv -f "${uwsm}.new" "$uwsm"
+
+cat >"$HOME/.config/hypr/${MARKER}.lua" <<'EOF'
+-- Managed by nomdelasociete.macpro Apply. Do not put AQ_DRM_DEVICES here.
+hl.env("LIBVA_DRIVER_NAME", "radeonsi")
+hl.env("VDPAU_DRIVER", "radeonsi")
+hl.env("AMD_VULKAN_ICD", "RADV")
+hl.env("VK_ICD_FILENAMES", "/usr/share/vulkan/icd.d/radeon_icd.json")
+hl.config({ cursor = { no_hardware_cursors = 1 } })
+EOF
+hypr="$HOME/.config/hypr/hyprland.lua"
+if [[ -f "$hypr" ]] && ! grep -q "$MARKER.lua" "$hypr"; then
+  printf '\n-- %s\ndofile(os.getenv("HOME") .. "/.config/hypr/%s.lua")\n' "$MARKER" "$MARKER" >>"$hypr"
+fi
+
+install -m 755 "$PLUGIN/bin/wifi-watch" "$HOME/.local/bin/omarchy-macpro-wifi-watch"
+install -m 755 "$PLUGIN/bin/display-mode" "$HOME/.local/bin/omarchy-macpro-display-mode"
+install -m 755 "$PLUGIN/bin/d700" "$HOME/.local/bin/d700"
+cat >"$HOME/.config/systemd/user/${MARKER}-wifi-watch.service" <<EOF
+[Unit]
+Description=Mac Pro Broadcom Wi-Fi reconnect watchdog
+After=graphical-session.target NetworkManager.service
+PartOf=graphical-session.target
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/omarchy-macpro-wifi-watch
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=graphical-session.target
+EOF
+/usr/bin/systemctl --user daemon-reload
+/usr/bin/systemctl --user enable --now ${MARKER}-wifi-watch.service >/dev/null
+
+cat >"$HOME/.local/state/omarchy/macpro-profile" <<EOF
+applied=$(date -Iseconds)
+product=$(tr -d '\0' </sys/class/dmi/id/product_name 2>/dev/null || true)
+EOF
+
+echo "==> Install root-owned helper, then run it (closed PATH)"
+$SUDO $ENV -i PATH=/usr/bin:/usr/sbin \
+  $INSTALL -d -o root -g root -m 755 "$DEST"
+$SUDO $ENV -i PATH=/usr/bin:/usr/sbin \
+  $INSTALL -o root -g root -m 755 "$PLUGIN/libexec/apply" "$DEST/apply"
+$SUDO $ENV -i PATH=/usr/bin:/usr/sbin \
+  $INSTALL -o root -g root -m 755 "$PLUGIN/libexec/remove" "$DEST/remove"
+$SUDO $ENV -i PATH=/usr/bin:/usr/sbin SUDO_USER="$USER" LOGNAME="$USER" \
+  "$DEST/apply"
+
+echo
+echo "Done. Reboot when this job is finished (not logout)."
+read -r -p "Press Enter to close."

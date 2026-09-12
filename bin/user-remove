@@ -1,0 +1,34 @@
+#!/bin/bash
+set -euo pipefail
+export PATH=/usr/bin:/usr/sbin
+if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+  echo "user-remove must not run as root." >&2
+  exit 1
+fi
+MARKER=nomdelasociete.macpro
+DEST=/usr/local/libexec/nomdelasociete-macpro
+SUDO=/usr/bin/sudo
+ENV=/usr/bin/env
+INSTALL=/usr/bin/install
+
+/usr/bin/systemctl --user disable --now ${MARKER}-wifi-watch.service >/dev/null 2>&1 || true
+rm -f "$HOME/.config/systemd/user/${MARKER}-wifi-watch.service"
+rm -f "$HOME/.config/hypr/${MARKER}.lua"
+rm -f "$HOME/.local/state/omarchy/macpro-profile"
+if [[ -f $HOME/.config/hypr/hyprland.lua ]]; then
+  tmp="$(mktemp)"
+  grep -v "$MARKER" "$HOME/.config/hypr/hyprland.lua" >"$tmp" || true
+  mv -f "$tmp" "$HOME/.config/hypr/hyprland.lua"
+fi
+
+if [[ -x $DEST/remove ]]; then
+  $SUDO $ENV -i PATH=/usr/bin:/usr/sbin SUDO_USER="$USER" "$DEST/remove"
+else
+  echo "Installing remove helper, then running it."
+  PLUGIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  $SUDO $ENV -i PATH=/usr/bin:/usr/sbin $INSTALL -d -o root -g root -m 755 "$DEST"
+  $SUDO $ENV -i PATH=/usr/bin:/usr/sbin $INSTALL -o root -g root -m 755 "$PLUGIN/libexec/remove" "$DEST/remove"
+  $SUDO $ENV -i PATH=/usr/bin:/usr/sbin SUDO_USER="$USER" "$DEST/remove"
+fi
+echo
+read -r -p "Press Enter to close."

@@ -1,0 +1,193 @@
+#!/bin/bash
+# Root-owned helper. Never sudo this from a user-writable path.
+# Installed to /usr/local/libexec/nomdelasociete-macpro/apply
+set -euo pipefail
+export PATH=/usr/bin:/usr/sbin
+unset LD_PRELOAD LD_LIBRARY_PATH PYTHONPATH
+if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+  echo "This helper must run as root (after install to /usr/local/libexec)." >&2
+  exit 1
+fi
+
+MARKER=nomdelasociete.macpro
+TARGET_USER="${SUDO_USER:-}"
+[[ -n "$TARGET_USER" && "$TARGET_USER" != root ]] || {
+  echo "SUDO_USER must be the graphical user." >&2
+  exit 1
+}
+
+product="$(tr -d '\0' </sys/class/dmi/id/product_name 2>/dev/null || true)"
+if [[ "$product" != MacPro6,1 ]]; then
+  echo "This profile is for MacPro6,1. This machine is: ${product:-unknown}"
+  read -r -p "Continue anyway? [y/N] " ans
+  [[ "$ans" == y || "$ans" == Y ]] || exit 1
+fi
+
+echo "==> Detecting FirePro GPUs"
+mapfile -t gpus < <(
+  for d in /sys/bus/pci/devices/*; do
+    [[ -r "$d/vendor" && -r "$d/class" ]] || continue
+    [[ $(cat "$d/vendor") == 0x1002 ]] || continue
+    [[ $(cat "$d/class") == 0x03* ]] || continue
+    echo "${d##*/}"
+  done | sort
+)
+if ((${#gpus[@]} < 2)); then
+  echo "Need two AMD GPUs, found ${#gpus[@]}." >&2
+  exit 1
+fi
+display_pci=""
+offload_pci=""
+for pci in "${gpus[@]}"; do
+  card="$(basename "$(readlink -f /sys/bus/pci/devices/$pci/drm/card* 2>/dev/null | head -1)")"
+  [[ "$card" == card* ]] || continue
+  connected=0
+  for conn in /sys/class/drm/${card}-*/status; do
+    [[ -r "$conn" ]] || continue
+    [[ $(cat "$conn") == connected ]] && connected=1
+  done
+  if [[ $connected -eq 1 && -z "$display_pci" ]]; then
+    display_pci="$pci"
+  else
+    offload_pci="${offload_pci:-$pci}"
+  fi
+done
+display_pci="${display_pci:-${gpus[-1]}}"
+offload_pci="${offload_pci:-${gpus[0]}}"
+[[ "$display_pci" == "$offload_pci" ]] && offload_pci="${gpus[0]}"
+echo "    display $display_pci   offload $offload_pci"
+
+echo "==> Colon-free DRM names"
+umask 022
+install -d -o root -g root -m 755 /etc/udev/rules.d
+tmp="$(mktemp --tmpdir=/etc/udev/rules.d)"
+cat >"$tmp" <<EOF
+# $MARKER
+KERNEL=="card*", SUBSYSTEM=="drm", KERNELS=="$display_pci", SYMLINK+="dri/d700-display"
+KERNEL=="card*", SUBSYSTEM=="drm", KERNELS=="$offload_pci", SYMLINK+="dri/d700-offload"
+EOF
+install -o root -g root -m 644 "$tmp" /etc/udev/rules.d/99-${MARKER}.rules
+rm -f "$tmp"
+udevadm control --reload-rules
+udevadm trigger --subsystem-match=drm --action=add
+
+echo "==> Sleep: Suspend masked; Hibernate + idle 30 min"
+systemctl mask suspend.target >/dev/null
+systemctl unmask sleep.target hibernate.target >/dev/null 2>&1 || true
+install -d -o root -g root -m 755 /etc/systemd/logind.conf.d
+tmp="$(mktemp --tmpdir=/etc/systemd/logind.conf.d)"
+cat >"$tmp" <<EOF
+# $MARKER
+[Login]
+HandleSuspendKey=hibernate
+HandleSuspendKeyLongPress=ignore
+IdleAction=hibernate
+IdleActionSec=30min
+EOF
+install -o root -g root -m 644 "$tmp" /etc/systemd/logind.conf.d/00-${MARKER}-sleep.conf
+install -o root -g root -m 644 "$tmp" /etc/systemd/logind.conf.d/50-${MARKER}-idle.conf
+rm -f "$tmp"
+systemctl kill -s HUP systemd-logind.service 2>/dev/null || true
+
+echo "==> Display retrain hook (embedded, not copied from the plugin tree)"
+install -d -o root -g root -m 755 /usr/lib/systemd/system-sleep
+tmp="$(mktemp --tmpdir=/usr/lib/systemd/system-sleep)"
+cat >"$tmp" <<'HOOK'
+#!/bin/bash
+set -u
+export PATH=/usr/bin:/usr/sbin
+[[ ${1:-} == post ]] || exit 0
+sleep 2
+user="" uid=""
+while read -r sess; do
+  u="$(loginctl show-session "$sess" -p Name --value 2>/dev/null || true)"
+  t="$(loginctl show-session "$sess" -p Type --value 2>/dev/null || true)"
+  [[ "$t" == wayland || "$t" == x11 ]] || continue
+  user="$u"
+  uid="$(id -u "$user" 2>/dev/null || true)"
+  break
+done < <(loginctl list-sessions --no-legend | awk '{print $1}')
+[[ -n "$user" && -n "$uid" ]] || exit 0
+export XDG_RUNTIME_DIR="/run/user/$uid"
+export WAYLAND_DISPLAY=""
+for cand in wayland-1 wayland-0; do
+  [[ -S "$XDG_RUNTIME_DIR/$cand" ]] && { WAYLAND_DISPLAY="$cand"; break; }
+done
+[[ -n "$WAYLAND_DISPLAY" ]] || exit 0
+hypr() { runuser -u "$user" -- env XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" WAYLAND_DISPLAY="$WAYLAND_DISPLAY" /usr/bin/hyprctl "$@"; }
+ok=0
+for _ in $(seq 1 15); do
+  hypr monitors -j 2>/dev/null | grep -q '"id"' && { ok=1; break; }
+  sleep 1
+done
+[[ $ok -eq 1 ]] || exit 0
+python3 - <<'PY' || true
+import json, os, subprocess, time
+def hypr(*args):
+    return subprocess.run(["hyprctl", *args], env=os.environ.copy(), capture_output=True, text=True, timeout=8)
+try:
+    mons = json.loads(hypr("monitors", "all", "-j").stdout)
+except Exception:
+    raise SystemExit(0)
+if not mons:
+    raise SystemExit(0)
+m = mons[0]
+name = m.get("name") or ""
+if not name:
+    raise SystemExit(0)
+hypr("dispatch", 'hl.dsp.dpms({ action = "enable" })')
+w, h = int(m.get("width") or 0), int(m.get("height") or 0)
+if w >= 3000 and h >= 1000:
+    raise SystemExit(0)
+def parse(mode):
+    mode = mode.replace("Hz", "")
+    a, hz = mode.split("@")
+    x, y = a.split("x")
+    return int(x), int(y), float(hz)
+modes = []
+for raw in m.get("availableModes") or []:
+    try:
+        modes.append(parse(raw))
+    except Exception:
+        pass
+if not modes:
+    raise SystemExit(0)
+train = next((x for x in modes if x[0] == 1920 and x[1] == 1080 and x[2] >= 59), None)
+native = max(modes, key=lambda t: (t[0] * t[1], t[2]))
+lua = "hl.monitor({ output = '%s', mode = '%dx%d@%g', position = '0x0', scale = 1 })"
+if train:
+    hypr("eval", lua % (name, train[0], train[1], train[2]))
+    time.sleep(2)
+hypr("eval", lua % (name, native[0], native[1], native[2]))
+PY
+exit 0
+HOOK
+install -o root -g root -m 755 "$tmp" /usr/lib/systemd/system-sleep/${MARKER}-dp-retrain
+rm -f "$tmp"
+
+echo "==> Login greeter keymap"
+layout="$(awk -F= '/^XKBLAYOUT=/{gsub(/"/,"");print $2}' /etc/vconsole.conf 2>/dev/null || true)"
+layout="${layout:-us}"
+install -d -o root -g root -m 755 /etc/sddm /etc/sddm.conf.d
+tmp="$(mktemp --tmpdir=/etc/sddm)"
+cat >"$tmp" <<EOF
+-- $MARKER
+dofile("/usr/share/sddm/hyprland.lua")
+hl.config({ input = { kb_layout = "$layout", kb_model = "pc105" } })
+EOF
+install -o root -g root -m 644 "$tmp" /etc/sddm/hyprland.lua
+rm -f "$tmp"
+tmp="$(mktemp --tmpdir=/etc/sddm.conf.d)"
+cat >"$tmp" <<EOF
+# $MARKER
+[General]
+GreeterEnvironment=XKB_DEFAULT_LAYOUT=$layout,XKB_DEFAULT_MODEL=pc105
+[Wayland]
+CompositorCommand=start-hyprland -- --config /etc/sddm/hyprland.lua
+EOF
+install -o root -g root -m 644 "$tmp" /etc/sddm.conf.d/11-${MARKER}-keyboard.conf
+rm -f "$tmp"
+
+echo
+echo "System pieces applied. Finish your work, then reboot so GPU names attach."
+echo "Sleep: Hibernate (idle 30 min or the power menu). Suspend stays off."

@@ -1,0 +1,22 @@
+#!/bin/bash
+# Root-owned helper. Installed to /usr/local/libexec/nomdelasociete-macpro/remove
+set -euo pipefail
+export PATH=/usr/bin:/usr/sbin
+unset LD_PRELOAD LD_LIBRARY_PATH PYTHONPATH
+if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+  echo "This helper must run as root." >&2
+  exit 1
+fi
+MARKER=nomdelasociete.macpro
+rm -f /etc/udev/rules.d/99-${MARKER}.rules
+udevadm control --reload-rules || true
+rm -f /usr/lib/systemd/system-sleep/${MARKER}-dp-retrain
+rm -f /etc/systemd/logind.conf.d/00-${MARKER}-sleep.conf
+rm -f /etc/systemd/logind.conf.d/50-${MARKER}-idle.conf
+rm -f /etc/sddm.conf.d/11-${MARKER}-keyboard.conf
+if grep -q "$MARKER" /etc/sddm/hyprland.lua 2>/dev/null; then
+  rm -f /etc/sddm/hyprland.lua
+fi
+systemctl kill -s HUP systemd-logind.service 2>/dev/null || true
+echo "System pieces removed. Suspend is still masked until you unmask it."
+echo "Reboot when convenient if DRM names changed."
