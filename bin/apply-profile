@@ -82,7 +82,8 @@ cat >/etc/systemd/logind.conf.d/00-${MARKER}-sleep.conf <<EOF
 [Login]
 HandleSuspendKey=hibernate
 HandleSuspendKeyLongPress=ignore
-IdleAction=ignore
+IdleAction=hibernate
+IdleActionSec=30min
 EOF
 systemctl kill -s HUP systemd-logind.service 2>/dev/null || true
 
@@ -105,6 +106,20 @@ GreeterEnvironment=XKB_DEFAULT_LAYOUT=$layout,XKB_DEFAULT_MODEL=pc105
 [Wayland]
 CompositorCommand=start-hyprland -- --config /etc/sddm/hyprland.lua
 EOF
+
+echo "==> Screensaver 2.5 min, lock 5 min; stay-awake off"
+install -d -m 755 "$TARGET_HOME/.config/omarchy" "$TARGET_HOME/.local/state/omarchy/indicators"
+runuser -u "$TARGET_USER" -- python3 - <<'PY'
+import json
+from pathlib import Path
+p = Path.home() / ".config/omarchy/shell.json"
+d = json.loads(p.read_text()) if p.is_file() else {"version": 1}
+d.setdefault("idle", {})
+d["idle"]["screensaver"] = 150
+d["idle"]["lock"] = 300
+p.write_text(json.dumps(d, indent=2) + "\n")
+PY
+rm -f "$TARGET_HOME/.local/state/omarchy/indicators/stay-awake"
 
 echo "==> User session (DRM env, Wi-Fi watchdog, RADV)"
 install -d -m 755 "$TARGET_HOME/.config/uwsm" \
