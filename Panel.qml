@@ -29,7 +29,7 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property bool headerHasCursor: cursorActive && focusSection === "header"
   readonly property bool offloadBusy: macpro.offloadCount > 0
-  readonly property color barIconColor: offloadBusy ? barForeground : Qt.darker(barForeground, 1.55)
+  readonly property color barIconColor: root.foreground
 
   function ensureCursor() {
     if (macpro.apps.length === 0) {
@@ -134,13 +134,12 @@ Panel {
     anchors.fill: parent
     bar: root.bar
     iconComponent: Component {
-      Item {
-        GpuIcon {
-          anchors.centerIn: parent
-          iconSize: Style.space(12)
-          color: root.barIconColor
-          offloadActive: root.offloadBusy
-        }
+      GpuIcon {
+        anchors.centerIn: parent
+        iconSize: parent ? Math.min(parent.width, parent.height) : Style.bar.iconCanvas
+        color: root.foreground
+        cut: Color.bar.background
+        offloadActive: root.offloadBusy
       }
     }
     onPressed: function(buttonCode) {
@@ -209,6 +208,7 @@ Panel {
                 GpuIcon {
                   iconSize: Style.font.display
                   color: root.foreground
+                  cut: Color.popups.background
                   offloadActive: root.offloadBusy
                 }
               }
@@ -362,6 +362,7 @@ Panel {
       GpuIcon {
         iconSize: Style.font.icon
         color: root.foreground
+        cut: Color.popups.background
         offloadActive: appRow.app && appRow.app.gpu === "offload"
         Layout.alignment: Qt.AlignVCenter
       }
