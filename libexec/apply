@@ -71,22 +71,47 @@ rm -f "$tmp"
 udevadm control --reload-rules
 udevadm trigger --subsystem-match=drm --action=add
 
-echo "==> Sleep: Suspend masked; Hibernate + idle 30 min"
-systemctl mask suspend.target >/dev/null
-systemctl unmask sleep.target hibernate.target >/dev/null 2>&1 || true
-install -d -o root -g root -m 755 /etc/systemd/logind.conf.d
+echo "==> Sleep: freeze/s2idle (do not power down DCE). Never amdgpu.dc=0."
+install -d -o root -g root -m 755 /etc/systemd/sleep.conf.d /etc/systemd/logind.conf.d
+tmp="$(mktemp --tmpdir=/etc/systemd/sleep.conf.d)"
+cat >"$tmp" <<EOF
+# $MARKER
+[Sleep]
+AllowSuspend=yes
+SuspendState=freeze
+MemorySleepMode=s2idle
+EOF
+install -o root -g root -m 644 "$tmp" /etc/systemd/sleep.conf.d/50-${MARKER}-s2idle.conf
+rm -f "$tmp"
 tmp="$(mktemp --tmpdir=/etc/systemd/logind.conf.d)"
 cat >"$tmp" <<EOF
 # $MARKER
 [Login]
-HandleSuspendKey=hibernate
+HandleSuspendKey=suspend
 HandleSuspendKeyLongPress=ignore
 IdleAction=ignore
 EOF
-install -o root -g root -m 644 "$tmp" /etc/systemd/logind.conf.d/00-${MARKER}-sleep.conf
+install -o root -g root -m 644 "$tmp" /etc/systemd/logind.conf.d/50-${MARKER}-s2idle.conf
 rm -f /etc/systemd/logind.conf.d/50-${MARKER}-idle.conf
 rm -f "$tmp"
+systemctl unmask suspend.target sleep.target >/dev/null 2>&1 || true
 systemctl kill -s HUP systemd-logind.service 2>/dev/null || true
+echo s2idle >/sys/power/mem_sleep 2>/dev/null || true
+for d in /sys/bus/pci/devices/*/driver; do
+  drv="$(basename "$(readlink "$d" 2>/dev/null || true)")"
+  [[ "$drv" == amdgpu || "$drv" == thunderbolt ]] || continue
+  echo on >"${d%/driver}/power/control" 2>/dev/null || true
+done
+tmp="$(mktemp --tmpdir=/etc/udev/rules.d)"
+cat >"$tmp" <<'EOF'
+ACTION=="add", SUBSYSTEM=="pci", DRIVER=="amdgpu", ATTR{power/control}="on"
+ACTION=="add", SUBSYSTEM=="pci", DRIVER=="thunderbolt", ATTR{power/control}="on"
+EOF
+install -o root -g root -m 644 "$tmp" /etc/udev/rules.d/50-${MARKER}-no-d3.rules
+rm -f "$tmp"
+echo 'options amdgpu runpm=0' >/etc/modprobe.d/amdgpu-macpro.conf
+chmod 644 /etc/modprobe.d/amdgpu-macpro.conf
+udevadm control --reload-rules
 
 echo "==> Display retrain hook (embedded, not copied from the plugin tree)"
 install -d -o root -g root -m 755 /usr/lib/systemd/system-sleep
