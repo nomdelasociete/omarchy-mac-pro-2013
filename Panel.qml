@@ -274,9 +274,9 @@ Panel {
               fontFamily: root.fontFamily
             }
 
-            Fact { label: "GPUs"; value: "Name both FirePros. No PCI colon login loop." }
-            Fact { label: "Sleep"; value: "Hibernate on. Suspend stays off." }
-            Fact { label: "Wake"; value: "Retrain the display. Hyprland is not restarted." }
+            Fact { label: "GPUs"; value: "card2 display, card1 offload. No PCI colons." }
+            Fact { label: "Screen"; value: "Screensaver 2.5 min, lock 5 min (overlay). Click to unlock." }
+            Fact { label: "Sleep"; value: "Power-menu Sleep is blocked. Kernel cannot wake DP. Power off the machine." }
             Fact { label: "Wi-Fi"; value: "Reconnect if the Broadcom radio drops." }
             Fact { label: "Login"; value: "Greeter keymap from vconsole." }
 
@@ -314,12 +314,9 @@ Panel {
               fontFamily: root.fontFamily
             }
 
-            Fact { label: "DRM"; value: macpro.udevNames ? "d700-display / d700-offload" : "not attached yet" }
-            Fact { label: "Sleep"; value: "Suspend " + macpro.suspend + " · Hibernate " + macpro.hibernate }
-            Fact {
-              label: "Session"
-              value: macpro.needsReboot ? "Reboot when this job is done (not logout)" : "GPU names live"
-            }
+            Fact { label: "DRM"; value: "card2 display · card1 offload" }
+            Fact { label: "Screen"; value: "Overlay lock on. Click wakes. Do not use Sleep." }
+            Fact { label: "Sleep"; value: "Machine sleep blocked (amdgpu HPD). Power off to stop." }
 
             Toggle {
               width: parent.width

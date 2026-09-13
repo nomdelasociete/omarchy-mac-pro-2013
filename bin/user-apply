@@ -43,7 +43,7 @@ touch "$uwsm"
 grep -v 'AQ_DRM_DEVICES\|AQ_NO_ATOMIC' "$uwsm" >"${uwsm}.new" || true
 cat >>"${uwsm}.new" <<EOF
 # $MARKER
-export AQ_DRM_DEVICES=/dev/dri/d700-display:/dev/dri/d700-offload
+export AQ_DRM_DEVICES=/dev/dri/card2:/dev/dri/card1
 export AQ_NO_ATOMIC=1
 EOF
 mv -f "${uwsm}.new" "$uwsm"

@@ -18,13 +18,14 @@ Apply is a **user** script: it writes your session files, then `sudo install`s h
 
 ## What Apply does
 
-- Colon-free DRM names (`/dev/dri/d700-display`, `d700-offload`). Never PCI `by-path` (login loop).
-- Sleep: **do not auto-hibernate** until `amdgpu.dc=0` is confirmed. Root cause of black-after-sleep is DC GPIO/AUX (`dal_gpio_service_open`) on DCE 6.0, not “this Mac cannot sleep.”
-- On wake: retrain DisplayPort. Never restart Hyprland/SDDM.
+- DRM: `/dev/dri/card2` (display) then `card1` (offload). Never PCI `by-path` (login loop). Never invent `d700-*` names.
+- **Screen:** Omarchy screensaver 2.5 min + lock 5 min (compositor overlay). Validated: click → password → session back. Does **not** cut DisplayPort.
+- **Sleep:** power-menu Sleep / `systemctl suspend` / Hibernate **masked**. amdgpu DC on DCE 6.0 wedges HPD (`dal_gpio_service_open`); only a reboot recovers. Fix is a kernel patch, not this plugin. Power the machine off.
+- Never `amdgpu.dc=0` (no picture at boot).
+- Never restart Hyprland/SDDM/`gpu_recover` for a black screen.
 - BCM4360 Wi-Fi watchdog (reconnect, no BSSID lock).
 - Login greeter keymap from `/etc/vconsole.conf`.
-- RADV only (ignore `nvidia-utils` if Steam pulled it).
-- Software cursors (Tahiti overlay is glitchy at 30 Hz).
+- RADV only. Software cursors.
 - Bar: relaunch a window on the other FirePro.
 - `d700 <app>` / Super+Alt+M (sharp vs 60 Hz on the current cable).
 
