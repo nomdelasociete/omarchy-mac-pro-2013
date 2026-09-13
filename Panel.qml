@@ -315,8 +315,8 @@ Panel {
             }
 
             Fact { label: "DRM"; value: "card2 display · card1 offload" }
-            Fact { label: "Screen"; value: "Overlay lock on. Click wakes. Do not use Sleep." }
-            Fact { label: "Sleep"; value: "Machine sleep blocked (amdgpu HPD). Power off to stop." }
+            Fact { label: "Screen"; value: macpro.screensaverOff ? "Screensaver flag was on — Apply restores overlay lock." : "Overlay lock on. Click wakes. Do not use Sleep." }
+            Fact { label: "Sleep"; value: (macpro.suspend === "masked" ? "Machine sleep blocked (amdgpu HPD). Power off to stop." : "Sleep is NOT masked — Apply now.") }
 
             Toggle {
               width: parent.width

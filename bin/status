@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-import json, os, subprocess
+import json, subprocess
 from pathlib import Path
 
 home = Path.home()
-state = Path(home) / ".local/state/omarchy/macpro-profile"
+state = home / ".local/state/omarchy/macpro-profile"
 product = ""
 p = Path("/sys/class/dmi/id/product_name")
 if p.is_file():
     product = p.read_text(errors="replace").strip()
+
 
 def sysctl(kind, unit):
     try:
@@ -16,17 +17,57 @@ def sysctl(kind, unit):
     except OSError:
         return "unknown"
 
+
 def user_active(unit):
     r = subprocess.run(["systemctl", "--user", "is-active", unit], capture_output=True, text=True)
     return r.returncode == 0
 
-udev = Path("/dev/dri/d700-display").exists() or Path("/dev/dri/d700-offload").exists()
-uwsm = Path.home() / ".config/uwsm/env-hyprland"
-uwsm_ok = False
-if uwsm.is_file():
-    uwsm_ok = "d700-display" in uwsm.read_text(errors="replace")
 
-live = False
+def aq_value(text):
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("export AQ_DRM_DEVICES="):
+            return s.split("=", 1)[1].strip().strip('"').strip("'")
+        if s.startswith("AQ_DRM_DEVICES="):
+            return s.split("=", 1)[1].strip().strip('"').strip("'")
+    return ""
+
+
+def aq_paths(value):
+    if not value:
+        return []
+    return [p for p in value.split(":") if p]
+
+
+def aq_safe(value):
+    """Colon-free /dev/dri/cardN (or d700-*) only. PCI by-path colons login-loop."""
+    paths = aq_paths(value)
+    if len(paths) < 1:
+        return False
+    for p in paths:
+        if "by-path" in p or "pci-0000:" in p:
+            return False
+        if not p.startswith("/dev/dri/"):
+            return False
+        name = p.rsplit("/", 1)[-1]
+        if name.startswith("card"):
+            continue
+        if name in ("d700-display", "d700-offload"):
+            continue
+        return False
+    return True
+
+
+def aq_on_disk(value):
+    return aq_safe(value) and all(Path(p).exists() for p in aq_paths(value))
+
+
+uwsm = home / ".config/uwsm/env-hyprland"
+uwsm_text = uwsm.read_text(errors="replace") if uwsm.is_file() else ""
+uwsm_val = aq_value(uwsm_text)
+uwsm_ok = aq_on_disk(uwsm_val)
+
+live_val = ""
 try:
     pids = subprocess.check_output(["pgrep", "-x", "Hyprland"], text=True).split()
 except subprocess.CalledProcessError:
@@ -39,12 +80,21 @@ for pid in pids:
         env = envp.read_bytes().replace(b"\0", b"\n").decode("utf-8", "replace")
     except OSError:
         continue
-    if "d700-display" in env:
-        live = True
+    for line in env.splitlines():
+        if line.startswith("AQ_DRM_DEVICES="):
+            live_val = line.split("=", 1)[1]
+            break
+    if live_val:
         break
 
-applied = state.is_file() or udev or uwsm_ok
-needs_reboot = applied and not live
+# Compositor is up. Next-login safety is uwsm_ok, not this process's stale env.
+live = bool(pids) and (aq_safe(live_val) or uwsm_ok or Path("/dev/dri/card2").exists())
+
+# Reboot only if the NEXT login would miss its DRM nodes (or use PCI colons).
+needs_reboot = bool(uwsm_val) and (not aq_safe(uwsm_val) or not aq_on_disk(uwsm_val))
+
+udev = Path("/dev/dri/d700-display").exists() or Path("/dev/dri/d700-offload").exists()
+applied = state.is_file() or uwsm_ok
 
 print(json.dumps({
     "ok": True,
@@ -57,4 +107,8 @@ print(json.dumps({
     "hibernate": sysctl("is-enabled", "hibernate.target"),
     "udevNames": udev,
     "wifiWatch": user_active("nomdelasociete.macpro-wifi-watch.service"),
+    "uwsm": uwsm_val,
+    "screensaverOff": (home / ".local/state/omarchy/toggles/screensaver-off").is_file(),
+    "suspendOff": (home / ".local/state/omarchy/toggles/suspend-off").is_file(),
+    "stayAwake": (home / ".local/state/omarchy/indicators/stay-awake").is_file(),
 }))

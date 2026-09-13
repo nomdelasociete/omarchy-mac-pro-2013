@@ -25,6 +25,9 @@ Item {
   property bool isMacPro: false
   property string product: ""
   property string sleepSummary: ""
+  property bool screensaverOff: false
+  property bool suspendOff: false
+  property bool stayAwake: false
 
   readonly property int refreshIntervalSec: {
     var n = parseInt(String(settings && settings.refreshIntervalSec != null ? settings.refreshIntervalSec : 4), 10)
@@ -127,10 +130,14 @@ Item {
       hibernate = String(s.hibernate || "")
       isMacPro = s.isMacPro61 === true
       product = String(s.product || "")
+      screensaverOff = s.screensaverOff === true
+      suspendOff = s.suspendOff === true
+      stayAwake = s.stayAwake === true
       var bits = []
-      if (s.needsReboot) bits.push("reboot when ready")
+      if (s.needsReboot) bits.push("fix DRM before next login")
       else bits.push("live")
       if (s.wifiWatch) bits.push("Wi-Fi watch on")
+      if (s.suspend === "masked") bits.push("Sleep blocked")
       sleepSummary = bits.join(" · ")
     }
   }

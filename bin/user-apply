@@ -24,7 +24,8 @@ echo "==> User files (no sudo)"
 install -d -m 755 "$HOME/.config/uwsm" "$HOME/.config/hypr" \
   "$HOME/.config/systemd/user" "$HOME/.local/bin" \
   "$HOME/.local/state/omarchy" "$HOME/.config/omarchy" \
-  "$HOME/.local/state/omarchy/indicators"
+  "$HOME/.local/state/omarchy/indicators" \
+  "$HOME/.local/state/omarchy/toggles"
 
 python3 - <<'PY'
 import json
@@ -37,13 +38,39 @@ d["idle"]["lock"] = 300
 p.write_text(json.dumps(d, indent=2) + "\n")
 PY
 rm -f "$HOME/.local/state/omarchy/indicators/stay-awake"
+rm -f "$HOME/.local/state/omarchy/toggles/screensaver-off"
+touch "$HOME/.local/state/omarchy/toggles/suspend-off"
+
+display_card=""
+offload_card=""
+for d in /sys/bus/pci/devices/*; do
+  [[ -r $d/vendor && -r $d/class ]] || continue
+  [[ $(cat "$d/vendor") == 0x1002 ]] || continue
+  [[ $(cat "$d/class") == 0x03* ]] || continue
+  card="$(basename "$(readlink -f "$d"/drm/card* 2>/dev/null | head -1)")"
+  [[ $card == card* ]] || continue
+  connected=0
+  for conn in /sys/class/drm/${card}-*/status; do
+    [[ -r $conn ]] || continue
+    [[ $(cat "$conn") == connected ]] && connected=1
+  done
+  if [[ $connected -eq 1 && -z $display_card ]]; then
+    display_card=$card
+  else
+    offload_card=${offload_card:-$card}
+  fi
+done
+display_card="${display_card:-card2}"
+offload_card="${offload_card:-card1}"
+[[ $display_card == "$offload_card" ]] && offload_card=card1
+echo "    AQ_DRM_DEVICES=/dev/dri/${display_card}:/dev/dri/${offload_card}"
 
 uwsm="$HOME/.config/uwsm/env-hyprland"
 touch "$uwsm"
 grep -v 'AQ_DRM_DEVICES\|AQ_NO_ATOMIC' "$uwsm" >"${uwsm}.new" || true
 cat >>"${uwsm}.new" <<EOF
 # $MARKER
-export AQ_DRM_DEVICES=/dev/dri/card2:/dev/dri/card1
+export AQ_DRM_DEVICES=/dev/dri/${display_card}:/dev/dri/${offload_card}
 export AQ_NO_ATOMIC=1
 EOF
 mv -f "${uwsm}.new" "$uwsm"
@@ -55,6 +82,9 @@ hl.env("VDPAU_DRIVER", "radeonsi")
 hl.env("AMD_VULKAN_ICD", "RADV")
 hl.env("VK_ICD_FILENAMES", "/usr/share/vulkan/icd.d/radeon_icd.json")
 hl.config({ cursor = { no_hardware_cursors = 1 } })
+-- Sleep key would call logind suspend and wedge DP. Lock instead.
+o.bind("XF86Sleep", "Lock (machine Sleep blocked)", "omarchy-system-lock", { locked = true })
+o.bind("XF86Suspend", "Lock (machine Sleep blocked)", "omarchy-system-lock", { locked = true })
 EOF
 hypr="$HOME/.config/hypr/hyprland.lua"
 if [[ -f "$hypr" ]] && ! grep -q "$MARKER.lua" "$hypr"; then
@@ -95,6 +125,11 @@ $SUDO $ENV -i PATH=/usr/bin:/usr/sbin \
 $SUDO $ENV -i PATH=/usr/bin:/usr/sbin SUDO_USER="$USER" LOGNAME="$USER" \
   "$DEST/apply"
 
+if command -v hyprctl >/dev/null 2>&1; then
+  hyprctl reload >/dev/null 2>&1 || true
+fi
+
 echo
-echo "Done. Reboot when this job is finished (not logout)."
+echo "Done. Screensaver 2.5 min, lock 5 min. Machine Sleep is blocked."
+echo "No logout/reboot needed for this session. Do not use Sleep / Suspend / Hibernate."
 read -r -p "Press Enter to close."

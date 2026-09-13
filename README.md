@@ -18,9 +18,9 @@ Apply is a **user** script: it writes your session files, then `sudo install`s h
 
 ## What Apply does
 
-- DRM: `/dev/dri/card2` (display) then `card1` (offload). Never PCI `by-path` (login loop). Never invent `d700-*` names.
-- **Screen:** Omarchy screensaver 2.5 min + lock 5 min (compositor overlay). Validated: click → password → session back. Does **not** cut DisplayPort.
-- **Sleep:** power-menu Sleep / `systemctl suspend` / Hibernate **masked**. amdgpu DC on DCE 6.0 wedges HPD (`dal_gpio_service_open`); only a reboot recovers. Fix is a kernel patch, not this plugin. Power the machine off.
+- DRM: live `/dev/dri/cardN` for the connected FirePro, then the other card. Never PCI `by-path` (login loop). `d700-*` udev aliases are extra; Apply does **not** put them in `AQ_DRM_DEVICES`.
+- **Screen:** Omarchy screensaver 2.5 min + lock 5 min (compositor overlay). Clears `screensaver-off` and stay-awake. Validated: click → password → session back. Does **not** cut DisplayPort.
+- **Sleep:** power-menu Suspend hidden (`suspend-off`), Sleep key → lock, `systemctl suspend` / Hibernate **masked**. amdgpu DC on DCE 6.0 wedges HPD (`dal_gpio_service_open`); only a reboot recovers. Fix is a kernel patch, not this plugin. Power the machine off.
 - Never `amdgpu.dc=0` (no picture at boot).
 - Never restart Hyprland/SDDM/`gpu_recover` for a black screen.
 - BCM4360 Wi-Fi watchdog (reconnect, no BSSID lock).

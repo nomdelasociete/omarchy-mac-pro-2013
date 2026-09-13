@@ -13,10 +13,16 @@ udevadm control --reload-rules || true
 rm -f /usr/lib/systemd/system-sleep/${MARKER}-dp-retrain
 rm -f /etc/systemd/logind.conf.d/00-${MARKER}-sleep.conf
 rm -f /etc/systemd/logind.conf.d/50-${MARKER}-idle.conf
+rm -f /etc/systemd/logind.conf.d/50-${MARKER}-s2idle.conf
+rm -f /etc/systemd/logind.conf.d/50-${MARKER}-nosleep.conf
+rm -f /etc/systemd/logind.conf.d/50-macpro-nosleep.conf
+rm -f /etc/systemd/sleep.conf.d/50-${MARKER}-s2idle.conf
+rm -f /etc/systemd/sleep.conf.d/50-${MARKER}-nosleep.conf
+rm -f /etc/systemd/sleep.conf.d/50-macpro-s2idle.conf
 rm -f /etc/sddm.conf.d/11-${MARKER}-keyboard.conf
 if grep -q "$MARKER" /etc/sddm/hyprland.lua 2>/dev/null; then
   rm -f /etc/sddm/hyprland.lua
 fi
 systemctl kill -s HUP systemd-logind.service 2>/dev/null || true
-echo "System pieces removed. Suspend is still masked until you unmask it."
-echo "Reboot when convenient if DRM names changed."
+echo "System pieces removed. Suspend/Hibernate stay masked until you unmask them."
+echo "Do not unmask on a 2013 Mac Pro — Sleep wedges DisplayPort."

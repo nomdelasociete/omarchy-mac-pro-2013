@@ -72,7 +72,7 @@ udevadm control --reload-rules
 udevadm trigger --subsystem-match=drm --action=add
 
 echo "==> Screen: overlay lock OK. Machine Sleep blocked (amdgpu DCE6 HPD bug)."
-install -d -o root -g root -m 755 /etc/systemd/logind.conf.d
+install -d -o root -g root -m 755 /etc/systemd/logind.conf.d /etc/systemd/sleep.conf.d
 tmp="$(mktemp --tmpdir=/etc/systemd/logind.conf.d)"
 cat >"$tmp" <<EOF
 # $MARKER
@@ -80,15 +80,32 @@ cat >"$tmp" <<EOF
 HandleSuspendKey=ignore
 HandleHibernateKey=ignore
 HandleSuspendKeyLongPress=ignore
+HandleHibernateKeyLongPress=ignore
 IdleAction=ignore
+AllowSuspend=no
+AllowHibernation=no
+AllowHybridSleep=no
+AllowSuspendThenHibernate=no
 EOF
 install -o root -g root -m 644 "$tmp" /etc/systemd/logind.conf.d/50-${MARKER}-nosleep.conf
 rm -f /etc/systemd/logind.conf.d/50-${MARKER}-idle.conf
 rm -f /etc/systemd/logind.conf.d/50-${MARKER}-s2idle.conf
+rm -f /etc/systemd/logind.conf.d/50-macpro-nosleep.conf
+rm -f "$tmp"
+tmp="$(mktemp --tmpdir=/etc/systemd/sleep.conf.d)"
+cat >"$tmp" <<EOF
+# $MARKER
+[Sleep]
+AllowSuspend=no
+AllowHibernation=no
+AllowHybridSleep=no
+AllowSuspendThenHibernate=no
+EOF
+install -o root -g root -m 644 "$tmp" /etc/systemd/sleep.conf.d/50-${MARKER}-nosleep.conf
 rm -f /etc/systemd/sleep.conf.d/50-${MARKER}-s2idle.conf
 rm -f /etc/systemd/sleep.conf.d/50-macpro-s2idle.conf
 rm -f "$tmp"
-systemctl mask suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1 || true
+systemctl mask suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target >/dev/null 2>&1 || true
 systemctl kill -s HUP systemd-logind.service 2>/dev/null || true
 
 echo "==> Display retrain hook (embedded, not copied from the plugin tree)"
@@ -191,5 +208,5 @@ install -o root -g root -m 644 "$tmp" /etc/sddm.conf.d/11-${MARKER}-keyboard.con
 rm -f "$tmp"
 
 echo
-echo "System pieces applied. Finish your work, then reboot so GPU names attach."
-echo "Sleep: Hibernate (idle 30 min or the power menu). Suspend stays off."
+echo "System pieces applied. Overlay lock stays on. Machine Sleep is blocked."
+echo "DRM uses /dev/dri/cardN (no PCI colons). Do not use Sleep / Suspend / Hibernate."
