@@ -1,38 +1,62 @@
 # Mac Pro 2013
 
-The one Omarchy setup for the Late 2013 Mac Pro (MacPro6,1) — the cylinder.
+![Mac Pro 2013](preview.png)
 
-Everyone else with this machine either:
+The Omarchy setup for the Late 2013 Mac Pro (MacPro6,1) — the cylinder, two FirePro D700s.
 
-```sh
+Installing the plugin only puts the cylinder on the bar. **Apply** is what actually configures the machine.
+
+## Install
+
+```bash
 omarchy plugin add https://github.com/nomdelasociete/omarchy-mac-pro-2013.git --enable
 ```
 
-then **Apply Mac Pro profile** from the bar (sudo in a terminal) —
+Click the cylinder → **Apply · sudo in a terminal**. Type your password once.
 
-or they do the DRM / sleep / Wi-Fi / keymap ritual by hand. Don’t.
-
-`omarchy plugin add` clones files only. It does **not** sudo, and it does **not** write `AQ_DRM_DEVICES`.
-
-Apply is a **user** script: it writes your session files, then `sudo install`s helpers into **root-owned** `/usr/local/libexec/nomdelasociete-macpro/` and runs **that** copy with `env -i PATH=/usr/bin:/usr/sbin`. Root never executes the plugin checkout.
+`omarchy plugin add` copies files. It does not sudo, and it does not write `AQ_DRM_DEVICES`.
 
 ## What Apply does
 
-- DRM: live `/dev/dri/cardN` for the connected FirePro, then the other card. Never PCI `by-path` (login loop). `d700-*` udev aliases are extra; Apply does **not** put them in `AQ_DRM_DEVICES`.
-- **Screen:** Omarchy screensaver 2.5 min + lock 5 min (compositor overlay). Clears `screensaver-off` and stay-awake. Validated: click → password → session back. Does **not** cut DisplayPort.
-- **Sleep:** power-menu Suspend hidden (`suspend-off`), Sleep key → lock, `systemctl suspend` / Hibernate **masked**. amdgpu DC on DCE 6.0 wedges HPD (`dal_gpio_service_open`); only a reboot recovers. Fix is a kernel patch, not this plugin. Power the machine off.
-- Never `amdgpu.dc=0` (no picture at boot).
-- Never restart Hyprland/SDDM/`gpu_recover` for a black screen.
-- BCM4360 Wi-Fi watchdog (reconnect, no BSSID lock).
-- Login greeter keymap from `/etc/vconsole.conf`.
-- RADV only. Software cursors.
-- Bar: relaunch a window on the other FirePro.
-- `d700 <app>` / Super+Alt+M (sharp vs 60 Hz on the current cable).
+- **GPUs** — puts the connected FirePro first (`/dev/dri/card2` then `card1` on a typical cylinder). Never PCI `by-path` names: those contain `:` and Hyprland login-loops.
+- **Screen** — screensaver after 2.5 minutes, lock after 5. Overlay only. Click, type your password, session is back. Does not cut DisplayPort.
+- **Sleep** — power-menu Suspend is hidden, Sleep key locks instead of sleeping, `systemctl suspend` / Hibernate are masked. The 2013 FirePro cannot wake DisplayPort; only a reboot recovers. Power the machine off.
+- **Wi-Fi** — reconnects the Broadcom BCM4360 if the radio drops. No BSSID lock.
+- **Login** — greeter keymap from `/etc/vconsole.conf`.
+- **Apps** — RADV, software cursors. From the bar, relaunch a window on the other FirePro. `d700 <app>` runs something on the offload GPU.
+
+## What it will not do
+
+- `amdgpu.dc=0` (no picture at boot)
+- Restart Hyprland, SDDM, or `gpu_recover` for a black screen
+- Make the internal Wi-Fi as good as Ethernet or a USB adapter
 
 ## Remove
 
 Bar → **Remove profile**. Plugin can stay installed.
 
-## Not this plugin
+```bash
+omarchy plugin remove nomdelasociete.macpro
+```
 
-A USB Wi-Fi adapter or Ethernet will always beat the internal BCM4360. Apply does not pretend otherwise.
+Suspend stays masked until you unmask it. Do not unmask on this hardware.
+
+## Requirements
+
+- Omarchy with its shell running
+- Late 2013 Mac Pro, product `MacPro6,1`, two AMD FirePro D700s
+- A real terminal for the one sudo (Apply does not use polkit)
+
+No extra packages. MIT.
+
+## Privilege
+
+Apply writes your session files as you. Then:
+
+```text
+sudo env -i PATH=/usr/bin:/usr/sbin /usr/bin/install -o root -g root
+```
+
+copies `libexec/apply` and `libexec/remove` into **root-owned** `/usr/local/libexec/nomdelasociete-macpro/`. Root runs **that** copy, with `env -i PATH=/usr/bin:/usr/sbin`. Root never executes the plugin checkout.
+
+The DisplayPort retrain hook is embedded in the root helper (here-doc), not copied as a live file from the checkout after becoming root.
