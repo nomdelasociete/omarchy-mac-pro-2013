@@ -81,11 +81,10 @@ cat >"$tmp" <<EOF
 [Login]
 HandleSuspendKey=hibernate
 HandleSuspendKeyLongPress=ignore
-IdleAction=hibernate
-IdleActionSec=30min
+IdleAction=ignore
 EOF
 install -o root -g root -m 644 "$tmp" /etc/systemd/logind.conf.d/00-${MARKER}-sleep.conf
-install -o root -g root -m 644 "$tmp" /etc/systemd/logind.conf.d/50-${MARKER}-idle.conf
+rm -f /etc/systemd/logind.conf.d/50-${MARKER}-idle.conf
 rm -f "$tmp"
 systemctl kill -s HUP systemd-logind.service 2>/dev/null || true
 
