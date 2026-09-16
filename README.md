@@ -27,7 +27,7 @@ Click the cylinder → **Apply · sudo in a terminal**. Type your password once.
 
 ## What it will not do
 
-- `amdgpu.dc=0` (no picture at boot)
+- `amdgpu.dc=0` (no picture at boot). Apply strips it from kernel cmdline and installs a pacman hook so `omarchy update` cannot bake it into the UKI.
 - Restart Hyprland, SDDM, or `gpu_recover` for a black screen
 - Make the internal Wi-Fi as good as Ethernet or a USB adapter
 

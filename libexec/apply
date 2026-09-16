@@ -184,6 +184,34 @@ HOOK
 install -o root -g root -m 755 "$tmp" /usr/lib/systemd/system-sleep/${MARKER}-dp-retrain
 rm -f "$tmp"
 
+echo "==> Never amdgpu.dc=0 (no picture on D700). Strip it before any UKI rebuild."
+install -d -o root -g root -m 755 /etc/pacman.d/hooks /usr/local/libexec/nomdelasociete-macpro
+# strip-dc0 is installed by user-apply next to this helper; keep a copy if missing.
+if [[ ! -x /usr/local/libexec/nomdelasociete-macpro/strip-dc0 ]]; then
+  echo "strip-dc0 missing next to apply; hook will no-op until next Apply." >&2
+else
+  /usr/local/libexec/nomdelasociete-macpro/strip-dc0 || true
+fi
+tmp="$(mktemp --tmpdir=/etc/pacman.d/hooks)"
+cat >"$tmp" <<'EOF'
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = linux
+Target = linux-lts
+Target = mkinitcpio
+Target = limine
+Target = limine-mkinitcpio
+Target = omarchy
+[Action]
+Description = Mac Pro: strip amdgpu.dc=0 before UKI rebuild
+When = PreTransaction
+Exec = /usr/local/libexec/nomdelasociete-macpro/strip-dc0
+EOF
+install -o root -g root -m 644 "$tmp" /etc/pacman.d/hooks/00-nomdelasociete.macpro-no-dc0.hook
+rm -f "$tmp"
+
 echo "==> Login greeter keymap"
 layout="$(awk -F= '/^XKBLAYOUT=/{gsub(/"/,"");print $2}' /etc/vconsole.conf 2>/dev/null || true)"
 layout="${layout:-us}"

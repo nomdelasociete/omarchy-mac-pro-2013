@@ -19,6 +19,8 @@ rm -f /etc/systemd/logind.conf.d/50-macpro-nosleep.conf
 rm -f /etc/systemd/sleep.conf.d/50-${MARKER}-s2idle.conf
 rm -f /etc/systemd/sleep.conf.d/50-${MARKER}-nosleep.conf
 rm -f /etc/systemd/sleep.conf.d/50-macpro-s2idle.conf
+rm -f /etc/pacman.d/hooks/00-${MARKER}-no-dc0.hook
+rm -f /usr/local/libexec/nomdelasociete-macpro/strip-dc0
 rm -f /etc/sddm.conf.d/11-${MARKER}-keyboard.conf
 if grep -q "$MARKER" /etc/sddm/hyprland.lua 2>/dev/null; then
   rm -f /etc/sddm/hyprland.lua

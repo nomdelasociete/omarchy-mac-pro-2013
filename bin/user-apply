@@ -122,6 +122,8 @@ $SUDO $ENV -i PATH=/usr/bin:/usr/sbin \
   $INSTALL -o root -g root -m 755 "$PLUGIN/libexec/apply" "$DEST/apply"
 $SUDO $ENV -i PATH=/usr/bin:/usr/sbin \
   $INSTALL -o root -g root -m 755 "$PLUGIN/libexec/remove" "$DEST/remove"
+$SUDO $ENV -i PATH=/usr/bin:/usr/sbin \
+  $INSTALL -o root -g root -m 755 "$PLUGIN/libexec/strip-dc0" "$DEST/strip-dc0"
 $SUDO $ENV -i PATH=/usr/bin:/usr/sbin SUDO_USER="$USER" LOGNAME="$USER" \
   "$DEST/apply"
 

@@ -1,0 +1,30 @@
+#!/bin/bash
+# Root-owned. Never write amdgpu.dc=0 — it kills picture on FirePro D700.
+# Called from Apply and from a pacman PreTransaction hook before UKI rebuild.
+set -euo pipefail
+export PATH=/usr/bin:/usr/sbin
+unset LD_PRELOAD LD_LIBRARY_PATH PYTHONPATH
+if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+  echo "strip-dc0 must run as root." >&2
+  exit 1
+fi
+
+strip_file() {
+  local f=$1
+  [[ -f $f && -w $f ]] || return 0
+  grep -qE 'amdgpu\.dc=0|amdgpu\.aspm=0' "$f" || return 0
+  local tmp
+  tmp="$(mktemp)"
+  sed -E 's/[[:space:]]*amdgpu\.dc=0//g; s/[[:space:]]*amdgpu\.aspm=0//g' "$f" >"$tmp"
+  install -o root -g root -m 644 "$tmp" "$f"
+  rm -f "$tmp"
+  echo "stripped amdgpu.dc=0/aspm=0 from $f"
+}
+
+strip_file /etc/kernel/cmdline
+strip_file /etc/default/limine
+for f in /etc/kernel/cmdline.d/* /etc/limine-entry-tool.d/*; do
+  [[ -e $f ]] || continue
+  strip_file "$f"
+done
+exit 0
