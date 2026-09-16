@@ -14,7 +14,7 @@ omarchy plugin add https://github.com/nomdelasociete/omarchy-mac-pro-2013.git --
 
 Click the cylinder → **Apply · sudo in a terminal**. Type your password once.
 
-First Apply installs the AUR package `nomdelasociete-macpro` if needed (`omarchy pkg aur add`). That package owns the root helper. The plugin checkout is never copied into a root path.
+First Apply installs package `nomdelasociete-macpro` if needed (AUR when the package exists, otherwise the GitHub Release). Pacman owns the root helper. The plugin checkout is never copied into a root path.
 
 `omarchy plugin add` copies widget files only. It does not sudo, and it does not write `AQ_DRM_DEVICES`.
 
@@ -48,7 +48,7 @@ Suspend stays masked until you unmask it. Do not unmask on this hardware.
 - Omarchy with its shell running
 - Late 2013 Mac Pro, product `MacPro6,1`, two AMD FirePro D700s
 - A real terminal for sudo (Apply does not use polkit)
-- AUR package `nomdelasociete-macpro` (Apply installs it if missing)
+- Package `nomdelasociete-macpro` (Apply installs it if missing). AUR when listed; until then the [v0.4.0 GitHub Release](https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/tag/v0.4.0).
 
 MIT.
 

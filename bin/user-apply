@@ -122,12 +122,27 @@ product=$(tr -d '\0' </sys/class/dmi/id/product_name 2>/dev/null || true)
 EOF
 
 if ! owned_by_pkg "$HELPER"; then
-  echo "==> Installing $PKG from the AUR (pacman owns the root helper)"
-  omarchy pkg aur add "$PKG"
+  echo "==> Installing $PKG (pacman owns the root helper)"
+  if command -v omarchy >/dev/null 2>&1; then
+    if curl -sf --connect-timeout 8 "https://aur.archlinux.org/rpc/?v=5&type=info&arg=$PKG" \
+         | grep -q '"resultcount":1'; then
+      omarchy pkg aur add "$PKG" || true
+    fi
+  fi
+  if ! owned_by_pkg "$HELPER"; then
+    echo "    AUR package not listed; installing GitHub release v0.4.0"
+    url="https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/download/v0.4.0/nomdelasociete-macpro-0.4.0-1-any.pkg.tar.zst"
+    sha="80980c26a1dfbbf5e22e2f668cadd32190cfd5ee44847da293b3ea59a0a0c00d"
+    tmp="$(mktemp --suffix=.pkg.tar.zst)"
+    /usr/bin/curl -fsSL "$url" -o "$tmp"
+    echo "$sha  $tmp" | /usr/bin/sha256sum -c --status
+    $SUDO $ENV -i PATH=/usr/bin:/usr/sbin /usr/bin/pacman -U --noconfirm "$tmp"
+    rm -f "$tmp"
+  fi
 fi
 if ! owned_by_pkg "$HELPER"; then
   echo "Refusing: $HELPER is not owned by package $PKG." >&2
-  echo "Install it with: omarchy pkg aur add $PKG" >&2
+  echo "Install: sudo pacman -U https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/download/v0.4.0/nomdelasociete-macpro-0.4.0-1-any.pkg.tar.zst" >&2
   exit 1
 fi
 
