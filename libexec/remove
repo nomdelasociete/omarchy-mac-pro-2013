@@ -1,10 +1,22 @@
 #!/bin/bash
-# Root-owned helper. Installed to /usr/local/libexec/nomdelasociete-macpro/remove
+# Root helper shipped by the nomdelasociete-macpro package.
 set -euo pipefail
 export PATH=/usr/bin:/usr/sbin
 unset LD_PRELOAD LD_LIBRARY_PATH PYTHONPATH
 if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   echo "This helper must run as root." >&2
+  exit 1
+fi
+HERE="$(readlink -f "$0")"
+PKG=nomdelasociete-macpro
+LIB=/usr/lib/nomdelasociete-macpro
+case "$HERE" in
+  "$LIB"/remove) ;;
+  *) echo "Refuse to run from $HERE (expected $LIB/remove)." >&2; exit 1 ;;
+esac
+owner="$(pacman -Qqo "$HERE" 2>/dev/null || true)"
+if [[ $owner != "$PKG" ]]; then
+  echo "Refuse: $HERE is not owned by package $PKG (owner=${owner:-none})." >&2
   exit 1
 fi
 MARKER=nomdelasociete.macpro
@@ -20,7 +32,7 @@ rm -f /etc/systemd/sleep.conf.d/50-${MARKER}-s2idle.conf
 rm -f /etc/systemd/sleep.conf.d/50-${MARKER}-nosleep.conf
 rm -f /etc/systemd/sleep.conf.d/50-macpro-s2idle.conf
 rm -f /etc/pacman.d/hooks/00-${MARKER}-no-dc0.hook
-rm -f /usr/local/libexec/nomdelasociete-macpro/strip-dc0
+rm -rf /usr/local/libexec/nomdelasociete-macpro
 rm -f /etc/sddm.conf.d/11-${MARKER}-keyboard.conf
 if grep -q "$MARKER" /etc/sddm/hyprland.lua 2>/dev/null; then
   rm -f /etc/sddm/hyprland.lua

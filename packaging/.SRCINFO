@@ -1,0 +1,16 @@
+pkgbase = nomdelasociete-macpro
+	pkgdesc = Root helpers for the 2013 Mac Pro Omarchy plugin (dual FirePro D700)
+	pkgver = 0.4.0
+	pkgrel = 1
+	url = https://github.com/nomdelasociete/omarchy-mac-pro-2013
+	arch = any
+	license = MIT
+	makedepends = git
+	depends = bash
+	depends = pacman
+	depends = systemd
+	depends = udev
+	source = git+https://github.com/nomdelasociete/omarchy-mac-pro-2013.git#tag=v0.4.0
+	sha256sums = SKIP
+
+pkgname = nomdelasociete-macpro

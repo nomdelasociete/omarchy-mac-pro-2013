@@ -6,10 +6,10 @@ if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
   exit 1
 fi
 MARKER=nomdelasociete.macpro
-DEST=/usr/local/libexec/nomdelasociete-macpro
+PKG=nomdelasociete-macpro
+HELPER=/usr/lib/nomdelasociete-macpro/remove
 SUDO=/usr/bin/sudo
 ENV=/usr/bin/env
-INSTALL=/usr/bin/install
 
 /usr/bin/systemctl --user disable --now ${MARKER}-wifi-watch.service >/dev/null 2>&1 || true
 rm -f "$HOME/.config/systemd/user/${MARKER}-wifi-watch.service"
@@ -21,14 +21,10 @@ if [[ -f $HOME/.config/hypr/hyprland.lua ]]; then
   mv -f "$tmp" "$HOME/.config/hypr/hyprland.lua"
 fi
 
-if [[ -x $DEST/remove ]]; then
-  $SUDO $ENV -i PATH=/usr/bin:/usr/sbin SUDO_USER="$USER" "$DEST/remove"
+if [[ -x $HELPER && $(pacman -Qqo "$HELPER" 2>/dev/null || true) == "$PKG" ]]; then
+  $SUDO $ENV -i PATH=/usr/bin:/usr/sbin SUDO_USER="$USER" "$HELPER"
 else
-  echo "Installing remove helper, then running it."
-  PLUGIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-  $SUDO $ENV -i PATH=/usr/bin:/usr/sbin $INSTALL -d -o root -g root -m 755 "$DEST"
-  $SUDO $ENV -i PATH=/usr/bin:/usr/sbin $INSTALL -o root -g root -m 755 "$PLUGIN/libexec/remove" "$DEST/remove"
-  $SUDO $ENV -i PATH=/usr/bin:/usr/sbin SUDO_USER="$USER" "$DEST/remove"
+  echo "Package $PKG is not installed; skipped system remove."
 fi
 echo
 read -r -p "Press Enter to close."

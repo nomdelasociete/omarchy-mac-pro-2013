@@ -1,0 +1,23 @@
+# Maintainer: Nom de la Société <65334819+jbronssin@users.noreply.github.com>
+pkgname=nomdelasociete-macpro
+pkgver=0.4.0
+pkgrel=1
+pkgdesc="Root helpers for the 2013 Mac Pro Omarchy plugin (dual FirePro D700)"
+arch=('any')
+url="https://github.com/nomdelasociete/omarchy-mac-pro-2013"
+license=('MIT')
+depends=('bash' 'pacman' 'systemd' 'udev')
+makedepends=('git')
+source=("git+https://github.com/nomdelasociete/omarchy-mac-pro-2013.git#tag=v${pkgver}")
+sha256sums=('SKIP')
+
+package() {
+  cd omarchy-mac-pro-2013
+  install -d "$pkgdir/usr/lib/nomdelasociete-macpro"
+  install -m755 libexec/apply "$pkgdir/usr/lib/nomdelasociete-macpro/apply"
+  install -m755 libexec/remove "$pkgdir/usr/lib/nomdelasociete-macpro/remove"
+  install -m755 libexec/strip-dc0 "$pkgdir/usr/lib/nomdelasociete-macpro/strip-dc0"
+  install -Dm644 packaging/00-nomdelasociete-macpro-no-dc0.hook \
+    "$pkgdir/usr/share/libalpm/hooks/00-nomdelasociete-macpro-no-dc0.hook"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

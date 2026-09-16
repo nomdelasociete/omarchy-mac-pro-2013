@@ -1,0 +1,14 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = linux
+Target = linux-lts
+Target = mkinitcpio
+Target = limine
+Target = limine-mkinitcpio
+Target = omarchy
+[Action]
+Description = Mac Pro: strip amdgpu.dc=0 before UKI rebuild
+When = PreTransaction
+Exec = /usr/lib/nomdelasociete-macpro/strip-dc0

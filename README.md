@@ -14,7 +14,9 @@ omarchy plugin add https://github.com/nomdelasociete/omarchy-mac-pro-2013.git --
 
 Click the cylinder → **Apply · sudo in a terminal**. Type your password once.
 
-`omarchy plugin add` copies files. It does not sudo, and it does not write `AQ_DRM_DEVICES`.
+First Apply installs the AUR package `nomdelasociete-macpro` if needed (`omarchy pkg aur add`). That package owns the root helper. The plugin checkout is never copied into a root path.
+
+`omarchy plugin add` copies widget files only. It does not sudo, and it does not write `AQ_DRM_DEVICES`.
 
 ## What Apply does
 
@@ -27,7 +29,7 @@ Click the cylinder → **Apply · sudo in a terminal**. Type your password once.
 
 ## What it will not do
 
-- `amdgpu.dc=0` (no picture at boot). Apply strips it from kernel cmdline and installs a pacman hook so `omarchy update` cannot bake it into the UKI.
+- `amdgpu.dc=0` (no picture at boot). The package ships a pacman hook that strips it before any UKI rebuild.
 - Restart Hyprland, SDDM, or `gpu_recover` for a black screen
 - Make the internal Wi-Fi as good as Ethernet or a USB adapter
 
@@ -45,18 +47,19 @@ Suspend stays masked until you unmask it. Do not unmask on this hardware.
 
 - Omarchy with its shell running
 - Late 2013 Mac Pro, product `MacPro6,1`, two AMD FirePro D700s
-- A real terminal for the one sudo (Apply does not use polkit)
+- A real terminal for sudo (Apply does not use polkit)
+- AUR package `nomdelasociete-macpro` (Apply installs it if missing)
 
-No extra packages. MIT.
+MIT.
 
 ## Privilege
 
-Apply writes your session files as you. Then:
+Apply writes your session files as you. The privileged helper is **package** `nomdelasociete-macpro`, files under `/usr/lib/nomdelasociete-macpro/`, owned by pacman.
 
 ```text
-sudo env -i PATH=/usr/bin:/usr/sbin /usr/bin/install -o root -g root
+sudo env -i PATH=/usr/bin:/usr/sbin /usr/lib/nomdelasociete-macpro/apply
 ```
 
-copies `libexec/apply` and `libexec/remove` into **root-owned** `/usr/local/libexec/nomdelasociete-macpro/`. Root runs **that** copy, with `env -i PATH=/usr/bin:/usr/sbin`. Root never executes the plugin checkout.
+Apply refuses if that path is missing or not owned by the package. It never `sudo install`s from the plugin checkout.
 
-The DisplayPort retrain hook is embedded in the root helper (here-doc), not copied as a live file from the checkout after becoming root.
+The DisplayPort retrain hook is embedded in the packaged helper (here-doc). The `amdgpu.dc=0` strip runs from a packaged alpm hook.
