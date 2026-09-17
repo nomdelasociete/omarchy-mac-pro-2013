@@ -5,12 +5,11 @@ pkgbase = nomdelasociete-macpro
 	url = https://github.com/nomdelasociete/omarchy-mac-pro-2013
 	arch = any
 	license = MIT
-	makedepends = git
 	depends = bash
 	depends = pacman
 	depends = systemd
 	depends = udev
-	source = git+https://github.com/nomdelasociete/omarchy-mac-pro-2013.git#tag=v0.4.0
-	sha256sums = SKIP
+	source = nomdelasociete-macpro-0.4.0.tar.gz::https://github.com/nomdelasociete/omarchy-mac-pro-2013/archive/refs/tags/v0.4.0.tar.gz
+	sha256sums = a904ea042bf2057827ae11cc46a6a02a19e4393ea8ef8b516657fca932e3b6da
 
 pkgname = nomdelasociete-macpro

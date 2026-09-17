@@ -15,15 +15,44 @@ HELPER="$LIB/apply"
 SUDO=/usr/bin/sudo
 ENV=/usr/bin/env
 MARKER=nomdelasociete.macpro
+# Immutable artifact: GitHub Release v0.4.0 / commit 147fe8a77094e96c6870c41b910fe3ac2455423f
+PKG_URL="https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/download/v0.4.0/nomdelasociete-macpro-0.4.0-1-any.pkg.tar.zst"
+PKG_SHA256="80980c26a1dfbbf5e22e2f668cadd32190cfd5ee44847da293b3ea59a0a0c00d"
+APPLY_SHA256="c7c004956e548c3afcb7c4d3f389462f3e8f14ceb399a39a8cccd4685164426c"
+REMOVE_SHA256="e2ef79bb6fa64a0f0020df20f47dac9a2ee36926aa50da4491052ff7fd928158"
+STRIP_SHA256="a225d70a700b019048e14dbec540ee30eabfd1ba9c17d61fbbf330e97e88da37"
 HOME_REAL="$(/usr/bin/realpath "$HOME")"
 case "$HOME_REAL" in
   /home/*) ;;
   *) echo "Refusing unexpected HOME=$HOME_REAL" >&2; exit 1 ;;
 esac
 
+file_sha256() {
+  /usr/bin/sha256sum "$1" | awk '{print $1}'
+}
+
 owned_by_pkg() {
   [[ -x $1 ]] || return 1
   [[ $(pacman -Qqo "$1" 2>/dev/null || true) == "$PKG" ]]
+}
+
+helpers_verified() {
+  owned_by_pkg "$LIB/apply" || return 1
+  owned_by_pkg "$LIB/remove" || return 1
+  owned_by_pkg "$LIB/strip-dc0" || return 1
+  [[ $(file_sha256 "$LIB/apply") == "$APPLY_SHA256" ]] || return 1
+  [[ $(file_sha256 "$LIB/remove") == "$REMOVE_SHA256" ]] || return 1
+  [[ $(file_sha256 "$LIB/strip-dc0") == "$STRIP_SHA256" ]] || return 1
+}
+
+install_pinned_package() {
+  echo "==> Installing $PKG from GitHub Release v0.4.0 (pinned sha256)"
+  local tmp
+  tmp="$(mktemp --suffix=.pkg.tar.zst)"
+  /usr/bin/curl -fsSL "$PKG_URL" -o "$tmp"
+  echo "$PKG_SHA256  $tmp" | /usr/bin/sha256sum -c --status
+  $SUDO $ENV -i PATH=/usr/bin:/usr/sbin /usr/bin/pacman -U --noconfirm "$tmp"
+  rm -f "$tmp"
 }
 
 echo "==> User files (no sudo)"
@@ -121,28 +150,12 @@ applied=$(date -Iseconds)
 product=$(tr -d '\0' </sys/class/dmi/id/product_name 2>/dev/null || true)
 EOF
 
-if ! owned_by_pkg "$HELPER"; then
-  echo "==> Installing $PKG (pacman owns the root helper)"
-  if command -v omarchy >/dev/null 2>&1; then
-    if curl -sf --connect-timeout 8 "https://aur.archlinux.org/rpc/?v=5&type=info&arg=$PKG" \
-         | grep -q '"resultcount":1'; then
-      omarchy pkg aur add "$PKG" || true
-    fi
-  fi
-  if ! owned_by_pkg "$HELPER"; then
-    echo "    AUR package not listed; installing GitHub release v0.4.0"
-    url="https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/download/v0.4.0/nomdelasociete-macpro-0.4.0-1-any.pkg.tar.zst"
-    sha="80980c26a1dfbbf5e22e2f668cadd32190cfd5ee44847da293b3ea59a0a0c00d"
-    tmp="$(mktemp --suffix=.pkg.tar.zst)"
-    /usr/bin/curl -fsSL "$url" -o "$tmp"
-    echo "$sha  $tmp" | /usr/bin/sha256sum -c --status
-    $SUDO $ENV -i PATH=/usr/bin:/usr/sbin /usr/bin/pacman -U --noconfirm "$tmp"
-    rm -f "$tmp"
-  fi
+if ! helpers_verified; then
+  install_pinned_package
 fi
-if ! owned_by_pkg "$HELPER"; then
-  echo "Refusing: $HELPER is not owned by package $PKG." >&2
-  echo "Install: sudo pacman -U https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/download/v0.4.0/nomdelasociete-macpro-0.4.0-1-any.pkg.tar.zst" >&2
+if ! helpers_verified; then
+  echo "Refusing: $HELPER is not package $PKG with the reviewed sha256." >&2
+  echo "Expected apply sha256 $APPLY_SHA256" >&2
   exit 1
 fi
 

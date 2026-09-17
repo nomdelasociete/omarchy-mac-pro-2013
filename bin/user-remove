@@ -10,6 +10,7 @@ PKG=nomdelasociete-macpro
 HELPER=/usr/lib/nomdelasociete-macpro/remove
 SUDO=/usr/bin/sudo
 ENV=/usr/bin/env
+REMOVE_SHA256="e2ef79bb6fa64a0f0020df20f47dac9a2ee36926aa50da4491052ff7fd928158"
 
 /usr/bin/systemctl --user disable --now ${MARKER}-wifi-watch.service >/dev/null 2>&1 || true
 rm -f "$HOME/.config/systemd/user/${MARKER}-wifi-watch.service"
@@ -21,10 +22,14 @@ if [[ -f $HOME/.config/hypr/hyprland.lua ]]; then
   mv -f "$tmp" "$HOME/.config/hypr/hyprland.lua"
 fi
 
-if [[ -x $HELPER && $(pacman -Qqo "$HELPER" 2>/dev/null || true) == "$PKG" ]]; then
+got=""
+if [[ -x $HELPER ]]; then
+  got="$(/usr/bin/sha256sum "$HELPER" | awk '{print $1}')"
+fi
+if [[ -x $HELPER && $(pacman -Qqo "$HELPER" 2>/dev/null || true) == "$PKG" && $got == "$REMOVE_SHA256" ]]; then
   $SUDO $ENV -i PATH=/usr/bin:/usr/sbin SUDO_USER="$USER" "$HELPER"
 else
-  echo "Package $PKG is not installed; skipped system remove."
+  echo "Package $PKG helper missing or digest mismatch; skipped system remove."
 fi
 echo
 read -r -p "Press Enter to close."

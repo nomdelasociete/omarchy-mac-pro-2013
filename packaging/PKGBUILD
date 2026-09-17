@@ -7,12 +7,12 @@ arch=('any')
 url="https://github.com/nomdelasociete/omarchy-mac-pro-2013"
 license=('MIT')
 depends=('bash' 'pacman' 'systemd' 'udev')
-makedepends=('git')
-source=("git+https://github.com/nomdelasociete/omarchy-mac-pro-2013.git#tag=v${pkgver}")
-sha256sums=('SKIP')
+# Immutable source: tag v0.4.0 = commit 147fe8a77094e96c6870c41b910fe3ac2455423f
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/nomdelasociete/omarchy-mac-pro-2013/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('a904ea042bf2057827ae11cc46a6a02a19e4393ea8ef8b516657fca932e3b6da')
 
 package() {
-  cd omarchy-mac-pro-2013
+  cd "omarchy-mac-pro-2013-${pkgver}"
   install -d "$pkgdir/usr/lib/nomdelasociete-macpro"
   install -m755 libexec/apply "$pkgdir/usr/lib/nomdelasociete-macpro/apply"
   install -m755 libexec/remove "$pkgdir/usr/lib/nomdelasociete-macpro/remove"

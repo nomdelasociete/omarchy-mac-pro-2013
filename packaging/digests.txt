@@ -1,0 +1,8 @@
+# Reviewed artifact identity for nomdelasociete-macpro 0.4.0-1
+# Source tag v0.4.0 = git commit 147fe8a77094e96c6870c41b910fe3ac2455423f
+source_tarball_sha256  a904ea042bf2057827ae11cc46a6a02a19e4393ea8ef8b516657fca932e3b6da
+package_url           https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/download/v0.4.0/nomdelasociete-macpro-0.4.0-1-any.pkg.tar.zst
+package_sha256        80980c26a1dfbbf5e22e2f668cadd32190cfd5ee44847da293b3ea59a0a0c00d
+apply_sha256          c7c004956e548c3afcb7c4d3f389462f3e8f14ceb399a39a8cccd4685164426c
+remove_sha256         e2ef79bb6fa64a0f0020df20f47dac9a2ee36926aa50da4491052ff7fd928158
+strip_dc0_sha256      a225d70a700b019048e14dbec540ee30eabfd1ba9c17d61fbbf330e97e88da37

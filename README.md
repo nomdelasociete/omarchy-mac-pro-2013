@@ -14,7 +14,7 @@ omarchy plugin add https://github.com/nomdelasociete/omarchy-mac-pro-2013.git --
 
 Click the cylinder → **Apply · sudo in a terminal**. Type your password once.
 
-First Apply installs package `nomdelasociete-macpro` if needed (AUR when the package exists, otherwise the GitHub Release). Pacman owns the root helper. The plugin checkout is never copied into a root path.
+First Apply installs package `nomdelasociete-macpro` from the [v0.4.0 GitHub Release](https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/tag/v0.4.0) if needed, after checking a pinned SHA-256. Pacman owns the root helper. Apply then checks the installed helper digest and **refuses** if it does not match. The plugin checkout is never copied into a root path.
 
 `omarchy plugin add` copies widget files only. It does not sudo, and it does not write `AQ_DRM_DEVICES`.
 
@@ -48,18 +48,23 @@ Suspend stays masked until you unmask it. Do not unmask on this hardware.
 - Omarchy with its shell running
 - Late 2013 Mac Pro, product `MacPro6,1`, two AMD FirePro D700s
 - A real terminal for sudo (Apply does not use polkit)
-- Package `nomdelasociete-macpro` (Apply installs it if missing). AUR when listed; until then the [v0.4.0 GitHub Release](https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/tag/v0.4.0).
+- Package `nomdelasociete-macpro` from the [v0.4.0 GitHub Release](https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/tag/v0.4.0) (Apply installs it if missing, SHA-256 pinned)
 
 MIT.
 
 ## Privilege
 
-Apply writes your session files as you. The privileged helper is **package** `nomdelasociete-macpro`, files under `/usr/lib/nomdelasociete-macpro/`, owned by pacman.
+Apply writes your session files as you. The privileged helper is **package** `nomdelasociete-macpro` (`/usr/lib/nomdelasociete-macpro/`), owned by pacman, bytes pinned in `packaging/digests.txt`.
 
 ```text
 sudo env -i PATH=/usr/bin:/usr/sbin /usr/lib/nomdelasociete-macpro/apply
 ```
 
-Apply refuses if that path is missing or not owned by the package. It never `sudo install`s from the plugin checkout.
+Before that sudo, Apply checks:
 
-The DisplayPort retrain hook is embedded in the packaged helper (here-doc). The `amdgpu.dc=0` strip runs from a packaged alpm hook.
+1. `pacman -Qqo` is `nomdelasociete-macpro`
+2. sha256 of `apply` / `remove` / `strip-dc0` match the reviewed digests
+
+If either fails, it installs the pinned GitHub Release `.pkg.tar.zst` (sha256 checked) and verifies again. Still wrong → **exit, no sudo**. No AUR. Never copies the plugin checkout into a root path.
+
+PKGBUILD source is the v0.4.0 tarball (`147fe8a…`) with a real `sha256sums`, not `SKIP`.
