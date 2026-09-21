@@ -5,7 +5,7 @@
   "version": "0.4.1",
   "author": "Nom de la Société",
   "license": "MIT",
-  "description": "Setup for the 2013 Mac Pro (MacPro6,1): dual FirePro, sleep, Wi-Fi, login keymap. Apply from the bar.",
+  "description": "One Apply from the bar for the Late 2013 cylinder: dual FirePro, overlay lock, Sleep blocked, Wi-Fi, login keymap.",
   "kinds": ["bar-widget"],
   "entryPoints": {
     "barWidget": "Panel.qml"
