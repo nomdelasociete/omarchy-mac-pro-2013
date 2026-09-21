@@ -236,7 +236,7 @@ Panel {
                     ? "One Apply. Dual FirePro, sleep, Wi-Fi. This is the whole setup."
                     : (macpro.needsReboot
                        ? "Profile is in. Finish this job, then reboot (not logout)."
-                       : (macpro.sleepSummary + (macpro.offloadCount > 0 ? (" · " + macpro.offloadCount + " on GPU 2") : " · 2013 Mac Pro")))
+                       : macpro.sleepSummary)
               foreground: root.foreground
               fontFamily: root.fontFamily
               iconComponent: Component {
