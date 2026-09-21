@@ -25,7 +25,7 @@ First Apply installs package `nomdelasociete-macpro` from the [v0.4.0 GitHub Rel
 - **Sleep** — power-menu Suspend is hidden, Sleep key locks instead of sleeping, `systemctl suspend` / Hibernate are masked. The 2013 FirePro cannot wake DisplayPort; only a reboot recovers. Power the machine off.
 - **Wi-Fi** — reconnects the Broadcom BCM4360 if the radio drops. No BSSID lock.
 - **Login** — greeter keymap from `/etc/vconsole.conf`.
-- **Apps** — RADV, software cursors. From the bar, relaunch a window on the other FirePro. `d700 <app>` runs something on the offload GPU.
+- **Apps** — RADV, software cursors. From the bar, pick a window’s GPU; that choice is saved and used on the next menu launch (`.desktop`). Open windows relaunch now. `d700 <app>` still runs something once on the offload GPU.
 
 ## What it will not do
 

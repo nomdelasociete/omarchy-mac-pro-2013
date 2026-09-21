@@ -10,6 +10,7 @@ Item {
   property string pluginDir: ""
 
   property var apps: []
+  property var savedApps: []
   property bool refreshing: false
   property bool moving: false
   property string lastError: ""
@@ -39,6 +40,7 @@ Item {
 
   readonly property string listBin: pluginDir + "/bin/list-apps"
   readonly property string moveBin: pluginDir + "/bin/move-gpu"
+  readonly property string prefBin: pluginDir + "/bin/gpu-pref"
   readonly property string statusBin: pluginDir + "/bin/status"
   readonly property string applyBin: pluginDir + "/bin/user-apply"
   readonly property string removeBin: pluginDir + "/bin/user-remove"
@@ -52,6 +54,10 @@ Item {
     if (!statusProc.running) {
       statusProc.command = ["/usr/bin/timeout", "5", statusBin]
       statusProc.running = true
+    }
+    if (!prefListProc.running) {
+      prefListProc.command = ["/usr/bin/timeout", "5", prefBin, "list"]
+      prefListProc.running = true
     }
   }
 
@@ -75,11 +81,30 @@ Item {
   function moveApp(app) {
     if (!app || moving) return
     var target = app.other === "offload" ? "offload" : "display"
-    moving = true
-    actionStatus = "Relaunching on " + target + "…"
+    setGpuPref(app.key || app.class, target, app.title || app.class, app.pid)
+  }
+
+  function setGpuPref(key, gpu, name, pid) {
+    if (!key || (gpu !== "display" && gpu !== "offload")) return
     lastError = ""
-    moveProc.command = ["/usr/bin/timeout", "15", moveBin, String(app.pid), target]
-    moveProc.running = true
+    actionStatus = (pid ? "Relaunching on " : "Next launch: ") + gpu + "…"
+    prefSetProc.command = ["/usr/bin/timeout", "8", prefBin, "set", String(key), gpu, String(name || key)]
+    prefSetProc.pendingPid = pid ? Number(pid) : 0
+    prefSetProc.pendingGpu = gpu
+    prefSetProc.running = true
+  }
+
+  function toggleSaved(app) {
+    if (!app) return
+    var next = app.gpu === "offload" ? "display" : "offload"
+    var running = null
+    for (var i = 0; i < apps.length; i++) {
+      if (String(apps[i].key || apps[i].class || "").toLowerCase() === String(app.key || "").toLowerCase()) {
+        running = apps[i]
+        break
+      }
+    }
+    setGpuPref(app.key, next, app.name || app.key, running ? running.pid : 0)
   }
 
   Process {
@@ -147,6 +172,45 @@ Item {
     stdout: StdioCollector {}
     stderr: StdioCollector {}
     onExited: function() { Qt.callLater(root.refresh) }
+  }
+
+  Process {
+    id: prefListProc
+    stdout: StdioCollector { id: prefListOut }
+    stderr: StdioCollector {}
+    onExited: function() {
+      try {
+        var p = JSON.parse(String(prefListOut.text || "{}"))
+        savedApps = p.ok ? (p.apps || []) : []
+      } catch (e) {
+        savedApps = []
+      }
+    }
+  }
+
+  Process {
+    id: prefSetProc
+    property int pendingPid: 0
+    property string pendingGpu: ""
+    stdout: StdioCollector { id: prefSetOut }
+    stderr: StdioCollector { id: prefSetErr }
+    onExited: function(code) {
+      if (code !== 0) {
+        lastError = String(prefSetErr.text || prefSetOut.text || "Could not save GPU preference").trim()
+        actionStatus = ""
+        Qt.callLater(root.refresh)
+        return
+      }
+      if (pendingPid > 0) {
+        moving = true
+        actionStatus = "Relaunching on " + pendingGpu + "…"
+        moveProc.command = ["/usr/bin/timeout", "15", moveBin, String(pendingPid), pendingGpu]
+        moveProc.running = true
+      } else {
+        actionStatus = "Saved for next launch"
+        Qt.callLater(root.refresh)
+      }
+    }
   }
 
   Process {

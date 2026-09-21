@@ -14,6 +14,8 @@ function appMeta(app) {
   if (!app) return ""
   var bits = []
   bits.push(gpuLabel(app.gpu))
+  if (app.preferred === "offload" || app.preferred === "display")
+    bits.push(app.preferred === app.gpu ? "saved" : ("next: " + gpuLabel(app.preferred)))
   if (app.class) bits.push(String(app.class))
   if (app.pid) bits.push("pid " + app.pid)
   return bits.join("  ·  ")

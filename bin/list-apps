@@ -20,6 +20,26 @@ SKIP_CLASS = {
 
 DISPLAY_PCI = "0000:06:00.0"
 OFFLOAD_PCI = "0000:02:00.0"
+PREF_FILE = Path.home() / ".local/state/omarchy/macpro-gpu.json"
+
+
+def load_prefs() -> dict[str, str]:
+    if not PREF_FILE.is_file():
+        return {}
+    try:
+        data = json.loads(PREF_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    apps = data.get("apps") if isinstance(data, dict) else {}
+    out: dict[str, str] = {}
+    if not isinstance(apps, dict):
+        return out
+    for key, rec in apps.items():
+        if isinstance(rec, dict) and rec.get("gpu") in ("display", "offload"):
+            out[str(key).lower()] = rec["gpu"]
+        elif rec in ("display", "offload"):
+            out[str(key).lower()] = rec
+    return out
 
 
 def drm_map() -> dict[str, str]:
@@ -110,6 +130,7 @@ def main() -> int:
         return 0
 
     drm = drm_map()
+    prefs = load_prefs()
     apps = []
     seen: set[int] = set()
     for c in clients:
@@ -122,12 +143,16 @@ def main() -> int:
         seen.add(pid)
         gpu = gpu_for_pid(pid, drm)
         title = str(c.get("title") or cls)
+        key = cls.lower() or str(pid)
+        preferred = prefs.get(key, "")
         apps.append(
             {
                 "pid": pid,
                 "class": cls,
+                "key": key,
                 "title": title[:80],
                 "gpu": gpu,
+                "preferred": preferred,
                 "other": "offload" if gpu == "display" else "display",
                 "cmdline": cmdline(pid),
                 "cwd": cwd(pid),

@@ -129,6 +129,7 @@ fi
 install -m 755 "$PLUGIN/bin/wifi-watch" "$HOME/.local/bin/omarchy-macpro-wifi-watch"
 install -m 755 "$PLUGIN/bin/display-mode" "$HOME/.local/bin/omarchy-macpro-display-mode"
 install -m 755 "$PLUGIN/bin/d700" "$HOME/.local/bin/d700"
+install -m 755 "$PLUGIN/bin/gpu-pref" "$HOME/.local/bin/omarchy-macpro-gpu-pref"
 cat >"$HOME/.config/systemd/user/${MARKER}-wifi-watch.service" <<EOF
 [Unit]
 Description=Mac Pro Broadcom Wi-Fi reconnect watchdog

@@ -365,8 +365,8 @@ Panel {
             leftPadding: Style.space(10)
             rightPadding: Style.space(10)
             text: root.askBeforeRelaunch
-                  ? "Click once to select, again to close and reopen on the other GPU."
-                  : "Click to close and reopen on the other GPU."
+                  ? "Click once to select, again to remember the other GPU. Open windows relaunch now; the menu uses it next time."
+                  : "Click to remember the other GPU. Open windows relaunch now; the menu uses it next time."
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -398,6 +398,47 @@ Panel {
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
+          }
+
+          Column {
+            visible: macpro.savedApps.length > 0
+            width: parent.width
+            spacing: Style.space(8)
+
+            PanelSeparator { foreground: root.foreground }
+
+            PanelSectionHeader {
+              text: "SAVED GPUS"
+              leftPadding: Style.space(10)
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              width: parent.width
+              leftPadding: Style.space(10)
+              rightPadding: Style.space(10)
+              text: "Off: display GPU. On: offload GPU. Applies to the next launch from the menu."
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              wrapMode: Text.WordWrap
+            }
+
+            Repeater {
+              model: macpro.savedApps
+              delegate: Toggle {
+                required property var modelData
+                width: parent ? parent.width : 0
+                label: String(modelData.name || modelData.key)
+                description: modelData.gpu === "offload" ? "Offload GPU (card1). Next launch." : "Display GPU (card2). Next launch."
+                checked: modelData.gpu === "offload"
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+                onClicked: macpro.toggleSaved(modelData)
+              }
+            }
           }
         }
       }

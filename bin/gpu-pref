@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""Persist per-app GPU (display|offload) and patch user .desktop files."""
+from __future__ import annotations
+
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+MARKER = "nomdelasociete.macpro"
+ORIG_KEY = f"X-{MARKER}-OriginalExec"
+STATE = Path.home() / ".local/state/omarchy/macpro-gpu.json"
+USER_APPS = Path.home() / ".local/share/applications"
+OFFLOAD_PRIME = "pci-0000_02_00_0"
+VK = "/usr/share/vulkan/icd.d/radeon_icd.json"
+ENV_PREFIX = f"env DRI_PRIME={OFFLOAD_PRIME} VK_ICD_FILENAMES={VK} "
+ENV_DISPLAY = f"env DRI_PRIME=0 VK_ICD_FILENAMES={VK} "
+
+
+def load_state() -> dict:
+    if not STATE.is_file():
+        return {"apps": {}}
+    try:
+        data = json.loads(STATE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"apps": {}}
+    apps = data.get("apps")
+    if not isinstance(apps, dict):
+        apps = {}
+    return {"apps": apps}
+
+
+def save_state(data: dict) -> None:
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = STATE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(STATE)
+
+
+def xdg_app_dirs() -> list[Path]:
+    dirs = [USER_APPS]
+    data_home = Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local/share"))
+    if data_home / "applications" not in dirs:
+        dirs.append(data_home / "applications")
+    extra = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
+    for raw in extra.split(":"):
+        p = Path(raw) / "applications"
+        if p not in dirs:
+            dirs.append(p)
+    return dirs
+
+
+def desktop_field(text: str, key: str) -> str:
+    for line in text.splitlines():
+        if line.startswith(key + "="):
+            return line.split("=", 1)[1].strip()
+    return ""
+
+
+def find_desktop(key: str) -> Path | None:
+    key_l = key.lower()
+    matches: list[tuple[int, Path]] = []
+    for folder in xdg_app_dirs():
+        if not folder.is_dir():
+            continue
+        for path in sorted(folder.glob("*.desktop")):
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            stem = path.stem.lower()
+            wm = desktop_field(text, "StartupWMClass").lower()
+            name = desktop_field(text, "Name").lower()
+            score = 0
+            if wm == key_l:
+                score = 3
+            elif stem == key_l:
+                score = 2
+            elif key_l in stem or key_l in wm:
+                score = 1
+            elif name == key_l:
+                score = 1
+            if score:
+                matches.append((score, path))
+    if not matches:
+        return None
+    matches.sort(key=lambda t: (-t[0], 0 if USER_APPS in t[1].parents or t[1].parent == USER_APPS else 1))
+    return matches[0][1]
+
+
+def strip_gpu_env(exec_line: str) -> str:
+    s = exec_line.strip()
+    s = re.sub(r"^env(\s+[A-Za-z_][A-Za-z0-9_]*=\S+)*\s+", lambda m: _drop_gpu_env(m.group(0)), s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def _drop_gpu_env(prefix: str) -> str:
+    parts = prefix.split()
+    keep = [p for p in parts[1:] if not p.startswith("DRI_PRIME=") and not p.startswith("VK_ICD_FILENAMES=")]
+    if not keep:
+        return ""
+    return "env " + " ".join(keep) + " "
+
+
+def patch_desktop(src: Path, gpu: str) -> Path:
+    text = src.read_text(encoding="utf-8", errors="replace")
+    dest = USER_APPS / src.name
+    USER_APPS.mkdir(parents=True, exist_ok=True)
+    if dest != src:
+        if not dest.is_file():
+            dest.write_text(text, encoding="utf-8")
+        text = dest.read_text(encoding="utf-8", errors="replace")
+
+    exec_line = desktop_field(text, "Exec")
+    original = desktop_field(text, ORIG_KEY) or strip_gpu_env(exec_line)
+    base = original if original else strip_gpu_env(exec_line)
+    if gpu == "offload":
+        new_exec = ENV_PREFIX + base
+        prefer = "true"
+    else:
+        new_exec = ENV_DISPLAY + base
+        prefer = "false"
+
+    lines = text.splitlines()
+    out: list[str] = []
+    seen_exec = seen_orig = seen_prefer = False
+    for line in lines:
+        if line.startswith("Exec=") and not seen_exec:
+            out.append("Exec=" + new_exec)
+            seen_exec = True
+            continue
+        if line.startswith(ORIG_KEY + "="):
+            out.append(f"{ORIG_KEY}={original}")
+            seen_orig = True
+            continue
+        if line.startswith("PrefersNonDefaultGPU="):
+            out.append(f"PrefersNonDefaultGPU={prefer}")
+            seen_prefer = True
+            continue
+        out.append(line)
+    if not seen_exec:
+        out.append("Exec=" + new_exec)
+    if not seen_orig:
+        out.append(f"{ORIG_KEY}={original}")
+    if not seen_prefer:
+        out.append(f"PrefersNonDefaultGPU={prefer}")
+    dest.write_text("\n".join(out) + "\n", encoding="utf-8")
+    return dest
+
+
+def cmd_list() -> int:
+    data = load_state()
+    apps = []
+    for key, rec in data["apps"].items():
+        if not isinstance(rec, dict):
+            continue
+        apps.append(
+            {
+                "key": key,
+                "gpu": rec.get("gpu") or "display",
+                "name": rec.get("name") or key,
+                "desktop": rec.get("desktop") or "",
+            }
+        )
+    apps.sort(key=lambda a: a["name"].lower())
+    print(json.dumps({"ok": True, "apps": apps}))
+    return 0
+
+
+def cmd_set(key: str, gpu: str, name: str) -> int:
+    if gpu not in ("display", "offload"):
+        print(json.dumps({"ok": False, "error": "gpu must be display|offload"}))
+        return 1
+    key = key.strip().lower()
+    if not key:
+        print(json.dumps({"ok": False, "error": "missing app key"}))
+        return 1
+    data = load_state()
+    rec = dict(data["apps"].get(key) or {})
+    rec["gpu"] = gpu
+    rec["name"] = name.strip() or rec.get("name") or key
+    desktop = find_desktop(key)
+    patched = ""
+    if desktop is not None:
+        dest = patch_desktop(desktop, gpu)
+        rec["desktop"] = dest.name
+        patched = str(dest)
+    data["apps"][key] = rec
+    save_state(data)
+    print(json.dumps({"ok": True, "key": key, "gpu": gpu, "desktop": patched}))
+    return 0
+
+
+def cmd_get(key: str) -> int:
+    rec = load_state()["apps"].get(key.strip().lower()) or {}
+    print(json.dumps({"ok": True, "gpu": rec.get("gpu") or "", "name": rec.get("name") or key}))
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) < 2 or argv[1] in {"-h", "--help"}:
+        print("usage: gpu-pref list|get <class>|set <class> <display|offload> [name]", file=sys.stderr)
+        return 2
+    op = argv[1]
+    if op == "list":
+        return cmd_list()
+    if op == "get" and len(argv) >= 3:
+        return cmd_get(argv[2])
+    if op == "set" and len(argv) >= 4:
+        name = " ".join(argv[4:]) if len(argv) > 4 else argv[2]
+        return cmd_set(argv[2], argv[3], name)
+    print("usage: gpu-pref list|get <class>|set <class> <display|offload> [name]", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
