@@ -71,6 +71,11 @@ Item {
     Quickshell.execDetached(["/usr/bin/omarchy-launch-floating-terminal-with-presentation", removeBin])
   }
 
+  function updatePlugin() {
+    actionStatus = "Update: terminal…"
+    Quickshell.execDetached(["/usr/bin/omarchy-launch-floating-terminal-with-presentation", "/usr/bin/bash", "-lc", "omarchy plugin update nomdelasociete.macpro --yes; echo; read -r -p 'Press Enter to close.'"])
+  }
+
   function toggleWifiWatch() {
     var on = !wifiWatch
     wifiWatch = on

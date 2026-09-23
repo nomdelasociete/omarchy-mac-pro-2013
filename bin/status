@@ -94,7 +94,7 @@ live = bool(pids) and (aq_safe(live_val) or uwsm_ok or Path("/dev/dri/card2").ex
 needs_reboot = bool(uwsm_val) and (not aq_safe(uwsm_val) or not aq_on_disk(uwsm_val))
 
 udev = Path("/dev/dri/d700-display").exists() or Path("/dev/dri/d700-offload").exists()
-applied = state.is_file() or uwsm_ok
+applied = state.is_file()
 
 print(json.dumps({
     "ok": True,

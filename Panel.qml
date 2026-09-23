@@ -336,6 +336,48 @@ Panel {
               MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
+                onClicked: macpro.applyProfile()
+              }
+              Text {
+                textFormat: Text.PlainText
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: Style.space(10)
+                text: "Apply again  ·  sudo in a terminal"
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+              }
+            }
+
+            CursorSurface {
+              width: parent.width
+              implicitHeight: Style.space(36)
+              foreground: root.foreground
+              hasCursor: false
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: macpro.updatePlugin()
+              }
+              Text {
+                textFormat: Text.PlainText
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: Style.space(10)
+                text: "Update plugin…"
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+              }
+            }
+
+            CursorSurface {
+              width: parent.width
+              implicitHeight: Style.space(36)
+              foreground: root.foreground
+              hasCursor: false
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
                 onClicked: macpro.removeProfile()
               }
               Text {

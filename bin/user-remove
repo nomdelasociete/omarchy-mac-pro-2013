@@ -16,6 +16,12 @@ REMOVE_SHA256="e2ef79bb6fa64a0f0020df20f47dac9a2ee36926aa50da4491052ff7fd928158"
 rm -f "$HOME/.config/systemd/user/${MARKER}-wifi-watch.service"
 rm -f "$HOME/.config/hypr/${MARKER}.lua"
 rm -f "$HOME/.local/state/omarchy/macpro-profile"
+uwsm="$HOME/.config/uwsm/env-hyprland"
+if [[ -f $uwsm ]]; then
+  tmp="$(mktemp)"
+  grep -v 'AQ_DRM_DEVICES\|AQ_NO_ATOMIC\|nomdelasociete.macpro' "$uwsm" >"$tmp" || true
+  mv -f "$tmp" "$uwsm"
+fi
 if [[ -f $HOME/.config/hypr/hyprland.lua ]]; then
   tmp="$(mktemp)"
   grep -v "$MARKER" "$HOME/.config/hypr/hyprland.lua" >"$tmp" || true

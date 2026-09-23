@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "nomdelasociete.macpro",
   "name": "Mac Pro 2013",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "author": "Nom de la Société",
   "license": "MIT",
   "description": "One Apply from the bar for the Late 2013 cylinder: dual FirePro, overlay lock, Sleep blocked, Wi-Fi, login keymap.",
