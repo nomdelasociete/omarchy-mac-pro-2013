@@ -2,7 +2,7 @@
 pkgname=nomdelasociete-macpro
 pkgver=0.4.0
 pkgrel=1
-pkgdesc="Root helpers for the 2013 Mac Pro Omarchy plugin (dual FirePro D700)"
+pkgdesc="Root helpers for the 2013 Mac Pro Omarchy plugin (dual FirePro D300/D500/D700)"
 arch=('any')
 url="https://github.com/nomdelasociete/omarchy-mac-pro-2013"
 license=('MIT')

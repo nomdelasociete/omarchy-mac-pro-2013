@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "nomdelasociete.macpro",
   "name": "Mac Pro 2013",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "author": "Nom de la Société",
   "license": "MIT",
-  "description": "One Apply from the bar for the Late 2013 cylinder: dual FirePro, overlay lock, Sleep blocked, Wi-Fi, login keymap.",
+  "description": "Late 2013 cylinder (D300/D500/D700): dual FirePro, lock without DPMS, Sleep blocked, Wi-Fi, login keymap.",
   "kinds": ["bar-widget"],
   "entryPoints": {
     "barWidget": "Panel.qml"
@@ -14,7 +14,7 @@
     "displayName": "Mac Pro 2013",
     "description": "Apply the 2013 Mac Pro profile; relaunch windows on the other FirePro.",
     "category": "Hardware",
-    "aliases": ["gpu", "macpro", "d700", "prime"],
+    "aliases": ["gpu", "macpro", "d300", "d500", "d700", "prime"],
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {

@@ -2,7 +2,7 @@
 
 ![Mac Pro 2013](preview.png)
 
-The Omarchy setup for the Late 2013 Mac Pro (MacPro6,1) — the cylinder, two FirePro D700s.
+The Omarchy setup for the Late 2013 Mac Pro (MacPro6,1) — the cylinder. Dual FirePro **D300, D500 or D700**.
 
 Installing the plugin only puts the cylinder on the bar. **Apply** is what actually configures the machine.
 
@@ -25,7 +25,7 @@ First Apply installs package `nomdelasociete-macpro` from the [v0.4.0 GitHub Rel
 - **Sleep** — power-menu Suspend is hidden, Sleep key locks instead of sleeping, `systemctl suspend` / Hibernate are masked. The 2013 FirePro cannot wake DisplayPort; only a reboot recovers. Power the machine off.
 - **Wi-Fi** — reconnects the Broadcom BCM4360 if the radio drops. No BSSID lock.
 - **Login** — greeter keymap from `/etc/vconsole.conf`.
-- **Apps** — RADV, software cursors. From the bar, pick a window’s GPU; that choice is saved and used on the next menu launch (`.desktop`). Open windows relaunch now. `d700 <app>` still runs something once on the offload GPU.
+- **Apps** — RADV, software cursors. From the bar, pick a window’s GPU; that choice is saved and used on the next menu launch (`.desktop`). Open windows relaunch now. `d700 <app>` runs something once on the offload FirePro (name kept even on D500).
 
 ## What it will not do
 
@@ -46,7 +46,7 @@ Suspend stays masked until you unmask it. Do not unmask on this hardware.
 ## Requirements
 
 - Omarchy with its shell running
-- Late 2013 Mac Pro, product `MacPro6,1`, two AMD FirePro D700s
+- Late 2013 Mac Pro, product `MacPro6,1`, two AMD FirePro D300, D500 or D700s
 - A real terminal for sudo (Apply does not use polkit)
 - Package `nomdelasociete-macpro` from the [v0.4.0 GitHub Release](https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/tag/v0.4.0) (Apply installs it if missing, SHA-256 pinned)
 
