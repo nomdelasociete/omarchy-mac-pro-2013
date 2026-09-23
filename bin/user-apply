@@ -126,35 +126,16 @@ if [[ -f "$hypr" ]] && ! grep -q "$MARKER.lua" "$hypr"; then
   printf '\n-- %s\ndofile(os.getenv("HOME") .. "/.config/hypr/%s.lua")\n' "$MARKER" "$MARKER" >>"$hypr"
 fi
 
-# Lock without DPMS: clone omarchy.lock and no-op runBlank (dpms disable kills HPD).
+# Lock without DPMS: clone omarchy.lock, then overlay our lock QML (idle cover, no dpms).
 lock_clone="$HOME/.config/omarchy/plugins/${USER}.lock"
-if [[ ! -f $lock_clone/Service.qml ]]; then
+if [[ ! -f $lock_clone/manifest.json ]]; then
   echo "==> Clone omarchy.lock (no DPMS blank on D700)"
   PATH=/usr/bin:/usr/sbin:/usr/share/omarchy/bin /usr/bin/omarchy plugin clone omarchy.lock || true
 fi
-python3 - "$HOME/.config/omarchy/plugins/${USER}.lock/Service.qml" <<'PY'
-import pathlib, sys
-p = pathlib.Path(sys.argv[1])
-if not p.is_file():
-    raise SystemExit(0)
-t = p.read_text(encoding="utf-8")
-old_blank = """  function runBlank() {
-    if (!blankProcess.running) blankProcess.running = true
-  }"""
-new_blank = """  function runBlank() {
-    // nomdelasociete.macpro: hyprctl dpms disable drops D700 HPD. Keep the
-    // session lock; do not blank the connector.
-    return
-  }"""
-if "nomdelasociete.macpro: hyprctl dpms disable" not in t:
-    if old_blank not in t:
-        raise SystemExit("lock clone Service.qml has unexpected runBlank")
-    t = t.replace(old_blank, new_blank, 1)
-old_cmd = 'command: ["bash", "-c", "omarchy-brightness-keyboard off; omarchy-brightness-display off"]'
-new_cmd = 'command: ["bash", "-c", "true"]'
-t = t.replace(old_cmd, new_cmd, 1)
-p.write_text(t, encoding="utf-8")
-PY
+if [[ -d $lock_clone && -d $PLUGIN/lock-clone ]]; then
+  install -m 644 "$PLUGIN/lock-clone/Service.qml" "$lock_clone/Service.qml"
+  install -m 644 "$PLUGIN/lock-clone/LockView.qml" "$lock_clone/LockView.qml"
+fi
 
 install -m 755 "$PLUGIN/bin/wifi-watch" "$HOME/.local/bin/omarchy-macpro-wifi-watch"
 install -m 755 "$PLUGIN/bin/display-mode" "$HOME/.local/bin/omarchy-macpro-display-mode"
