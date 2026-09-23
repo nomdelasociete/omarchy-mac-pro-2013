@@ -136,6 +136,15 @@ if [[ -d $lock_clone && -d $PLUGIN/lock-clone ]]; then
   install -m 644 "$PLUGIN/lock-clone/Service.qml" "$lock_clone/Service.qml"
   install -m 644 "$PLUGIN/lock-clone/LockView.qml" "$lock_clone/LockView.qml"
 fi
+OMARCHY_BIN=/usr/bin/omarchy
+export OMARCHY_PATH="${OMARCHY_PATH:-/usr/share/omarchy}"
+PATH=/usr/bin:/usr/sbin:/usr/share/omarchy/bin
+$OMARCHY_BIN plugin disable omarchy.lock >/dev/null 2>&1 || true
+$OMARCHY_BIN plugin enable "${USER}.lock" >/dev/null 2>&1 || true
+if [[ $(omarchy-shell lock isLocked 2>/dev/null || true) != true ]]; then
+  echo "==> Restart shell so ${USER}.lock owns the lock IPC (not stock dpms)"
+  $OMARCHY_BIN restart shell >/dev/null 2>&1 || true
+fi
 
 install -m 755 "$PLUGIN/bin/wifi-watch" "$HOME/.local/bin/omarchy-macpro-wifi-watch"
 install -m 755 "$PLUGIN/bin/display-mode" "$HOME/.local/bin/omarchy-macpro-display-mode"
