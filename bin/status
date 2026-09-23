@@ -96,9 +96,29 @@ needs_reboot = bool(uwsm_val) and (not aq_safe(uwsm_val) or not aq_on_disk(uwsm_
 udev = Path("/dev/dri/d700-display").exists() or Path("/dev/dri/d700-offload").exists()
 applied = state.is_file()
 
+applied_ver = ""
+if state.is_file():
+    for line in state.read_text(errors="replace").splitlines():
+        if line.startswith("version="):
+            applied_ver = line.split("=", 1)[1].strip()
+plugin_ver = ""
+man = Path(__file__).resolve().parent.parent / "manifest.json"
+if man.is_file():
+    try:
+        plugin_ver = str(json.loads(man.read_text(encoding="utf-8")).get("version") or "")
+    except (OSError, json.JSONDecodeError):
+        plugin_ver = ""
+needs_apply = applied and bool(plugin_ver) and plugin_ver != applied_ver
+
+drm_label = uwsm_val.replace("/dev/dri/", "") if uwsm_val else ""
+
 print(json.dumps({
     "ok": True,
     "applied": applied,
+    "needsApply": needs_apply,
+    "drmLabel": drm_label,
+    "pluginVersion": plugin_ver,
+    "appliedVersion": applied_ver,
     "needsReboot": needs_reboot,
     "live": live,
     "product": product,

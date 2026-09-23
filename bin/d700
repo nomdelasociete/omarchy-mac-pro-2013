@@ -3,8 +3,24 @@
 set -euo pipefail
 prime="pci-0000_02_00_0"
 if [[ -e /sys/class/drm/d700-offload ]]; then
-  # resolve PCI from the udev name
   pci="$(basename "$(readlink -f /sys/class/drm/d700-offload/device 2>/dev/null || true)")"
   [[ "$pci" == 0000:* ]] && prime="pci-${pci//:/_}"
+else
+  for d in /sys/bus/pci/devices/*; do
+    [[ -r $d/vendor && -r $d/class ]] || continue
+    [[ $(cat "$d/vendor") == 0x1002 ]] || continue
+    [[ $(cat "$d/class") == 0x03* ]] || continue
+    card="$(basename "$(readlink -f "$d"/drm/card* 2>/dev/null | head -1)")"
+    [[ $card == card* ]] || continue
+    connected=0
+    for conn in /sys/class/drm/${card}-*/status; do
+      [[ -r $conn && $(cat "$conn") == connected ]] && connected=1
+    done
+    if [[ $connected -eq 0 ]]; then
+      pci="$(basename "$d")"
+      prime="pci-${pci//:/_}"
+      break
+    fi
+  done
 fi
 exec env DRI_PRIME="$prime" VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json "$@"

@@ -166,9 +166,11 @@ EOF
 /usr/bin/systemctl --user daemon-reload
 /usr/bin/systemctl --user enable --now ${MARKER}-wifi-watch.service >/dev/null
 
+ver="$(python3 -c 'import json; print(json.load(open("'"$PLUGIN"'/manifest.json")).get("version",""))' 2>/dev/null || true)"
 cat >"$HOME/.local/state/omarchy/macpro-profile" <<EOF
 applied=$(date -Iseconds)
 product=$(tr -d '\0' </sys/class/dmi/id/product_name 2>/dev/null || true)
+version=${ver}
 EOF
 
 if ! helpers_verified; then

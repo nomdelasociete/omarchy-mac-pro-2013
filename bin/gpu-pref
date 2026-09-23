@@ -12,8 +12,42 @@ MARKER = "nomdelasociete.macpro"
 ORIG_KEY = f"X-{MARKER}-OriginalExec"
 STATE = Path.home() / ".local/state/omarchy/macpro-gpu.json"
 USER_APPS = Path.home() / ".local/share/applications"
-OFFLOAD_PRIME = "pci-0000_02_00_0"
 VK = "/usr/share/vulkan/icd.d/radeon_icd.json"
+
+
+def offload_prime() -> str:
+    pci_root = Path("/sys/bus/pci/devices")
+    display = offload = ""
+    if pci_root.is_dir():
+        for d in pci_root.iterdir():
+            try:
+                vendor = (d / "vendor").read_text().strip()
+                cls = (d / "class").read_text().strip()
+            except OSError:
+                continue
+            if vendor != "0x1002" or not cls.startswith("0x03"):
+                continue
+            cards = list((d / "drm").glob("card*")) if (d / "drm").is_dir() else []
+            if not cards:
+                continue
+            card = cards[0].name
+            connected = False
+            for st in Path("/sys/class/drm").glob(f"{card}-*/status"):
+                try:
+                    if st.read_text().strip() == "connected":
+                        connected = True
+                        break
+                except OSError:
+                    continue
+            if connected and not display:
+                display = d.name
+            else:
+                offload = offload or d.name
+    pci = offload or "0000:02:00.0"
+    return "pci-" + pci.replace(":", "_")
+
+
+OFFLOAD_PRIME = offload_prime()
 ENV_PREFIX = f"env DRI_PRIME={OFFLOAD_PRIME} VK_ICD_FILENAMES={VK} "
 ENV_DISPLAY = f"env DRI_PRIME=0 VK_ICD_FILENAMES={VK} "
 

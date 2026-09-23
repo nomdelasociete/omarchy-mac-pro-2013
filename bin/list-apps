@@ -18,9 +18,43 @@ SKIP_CLASS = {
     "polkit",
 }
 
-DISPLAY_PCI = "0000:06:00.0"
-OFFLOAD_PCI = "0000:02:00.0"
 PREF_FILE = Path.home() / ".local/state/omarchy/macpro-gpu.json"
+
+
+def firepro_pci() -> tuple[str, str]:
+    display, offload = "", ""
+    pci_root = Path("/sys/bus/pci/devices")
+    if not pci_root.is_dir():
+        return "0000:06:00.0", "0000:02:00.0"
+    for d in pci_root.iterdir():
+        try:
+            vendor = (d / "vendor").read_text().strip()
+            cls = (d / "class").read_text().strip()
+        except OSError:
+            continue
+        if vendor != "0x1002" or not cls.startswith("0x03"):
+            continue
+        cards = list((d / "drm").glob("card*")) if (d / "drm").is_dir() else []
+        if not cards:
+            continue
+        card = cards[0].name
+        connected = False
+        for st in Path("/sys/class/drm").glob(f"{card}-*/status"):
+            try:
+                if st.read_text().strip() == "connected":
+                    connected = True
+                    break
+            except OSError:
+                continue
+        pci_id = d.name
+        if connected and not display:
+            display = pci_id
+        else:
+            offload = offload or pci_id
+    return display or "0000:06:00.0", offload or "0000:02:00.0"
+
+
+DISPLAY_PCI, OFFLOAD_PCI = firepro_pci()
 
 
 def load_prefs() -> dict[str, str]:

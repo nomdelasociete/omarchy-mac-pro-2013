@@ -29,6 +29,8 @@ Item {
   property bool screensaverOff: false
   property bool suspendOff: false
   property bool stayAwake: false
+  property bool needsApply: false
+  property string drmLabel: ""
 
   readonly property int refreshIntervalSec: {
     var n = parseInt(String(settings && settings.refreshIntervalSec != null ? settings.refreshIntervalSec : 4), 10)
@@ -71,10 +73,7 @@ Item {
     Quickshell.execDetached(["/usr/bin/omarchy-launch-floating-terminal-with-presentation", removeBin])
   }
 
-  function updatePlugin() {
-    actionStatus = "Update: terminal…"
-    Quickshell.execDetached(["/usr/bin/omarchy-launch-floating-terminal-with-presentation", "/usr/bin/bash", "-lc", "omarchy plugin update nomdelasociete.macpro --yes; echo; read -r -p 'Press Enter to close.'"])
-  }
+
 
   function toggleWifiWatch() {
     var on = !wifiWatch
@@ -163,6 +162,8 @@ Item {
       screensaverOff = s.screensaverOff === true
       suspendOff = s.suspendOff === true
       stayAwake = s.stayAwake === true
+      needsApply = s.needsApply === true
+      drmLabel = String(s.drmLabel || "")
       var bits = []
       if (s.needsReboot) bits.push("fix DRM before next login")
       else bits.push("live")

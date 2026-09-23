@@ -231,12 +231,15 @@ Panel {
               id: hero
               width: parent.width
               title: !macpro.profileApplied ? "Keep the cylinder alive"
-                    : (macpro.needsReboot ? "Applied — reboot when ready" : "Mac Pro 2013")
+                    : (macpro.needsApply ? "This version is not applied"
+                    : (macpro.needsReboot ? "Applied — reboot when ready" : "Mac Pro 2013"))
               meta: !macpro.profileApplied
                     ? "One Apply. Dual FirePro, sleep, Wi-Fi. This is the whole setup."
+                    : (macpro.needsApply
+                       ? "Plugin files are newer. Apply to put them on the machine."
                     : (macpro.needsReboot
                        ? "Profile is in. Finish this job, then reboot (not logout)."
-                       : macpro.sleepSummary)
+                       : macpro.sleepSummary))
               foreground: root.foreground
               fontFamily: root.fontFamily
               iconComponent: Component {
@@ -274,7 +277,7 @@ Panel {
               fontFamily: root.fontFamily
             }
 
-            Fact { label: "GPUs"; value: "card2 display, card1 offload. No PCI colons." }
+            Fact { label: "GPUs"; value: "Connected FirePro first. No PCI colons." }
             Fact { label: "Screen"; value: "Screensaver 2.5 min, lock 5 min. Lock keeps DP on (no dpms off)." }
             Fact { label: "Sleep"; value: "Power-menu Sleep is blocked. Kernel cannot wake DP. Power off the machine." }
             Fact { label: "Wi-Fi"; value: "Reconnect if the Broadcom radio drops." }
@@ -314,7 +317,7 @@ Panel {
               fontFamily: root.fontFamily
             }
 
-            Fact { label: "DRM"; value: "card2 display · card1 offload" }
+            Fact { label: "DRM"; value: macpro.drmLabel || "Detecting…" }
             Fact { label: "Screen"; value: macpro.screensaverOff ? "Screensaver flag was on — Apply restores screensaver+lock." : "Screensaver 2.5 min, lock 5 min. Password. DP stays on." }
             Fact { label: "Sleep"; value: (macpro.suspend === "masked" ? "Machine sleep blocked (amdgpu HPD). Power off to stop." : "Sleep is NOT masked — Apply now.") }
 
@@ -329,6 +332,7 @@ Panel {
             }
 
             CursorSurface {
+              visible: macpro.needsApply
               width: parent.width
               implicitHeight: Style.space(36)
               foreground: root.foreground
@@ -342,29 +346,8 @@ Panel {
                 textFormat: Text.PlainText
                 anchors.verticalCenter: parent.verticalCenter
                 leftPadding: Style.space(10)
-                text: "Apply again  ·  sudo in a terminal"
+                text: "Apply  ·  this version"
                 color: root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.body
-              }
-            }
-
-            CursorSurface {
-              width: parent.width
-              implicitHeight: Style.space(36)
-              foreground: root.foreground
-              hasCursor: false
-              MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: macpro.updatePlugin()
-              }
-              Text {
-                textFormat: Text.PlainText
-                anchors.verticalCenter: parent.verticalCenter
-                leftPadding: Style.space(10)
-                text: "Update plugin…"
-                color: root.dim
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.body
               }
@@ -474,7 +457,7 @@ Panel {
                 required property var modelData
                 width: parent ? parent.width : 0
                 label: String(modelData.name || modelData.key)
-                description: modelData.gpu === "offload" ? "Offload GPU (card1). Next launch." : "Display GPU (card2). Next launch."
+                description: modelData.gpu === "offload" ? "Offload FirePro. Next launch." : "Display FirePro. Next launch."
                 checked: modelData.gpu === "offload"
                 foreground: root.foreground
                 fontFamily: root.fontFamily
