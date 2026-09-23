@@ -21,7 +21,7 @@ First Apply installs package `nomdelasociete-macpro` from the [v0.4.0 GitHub Rel
 ## What Apply does
 
 - **GPUs** — puts the connected FirePro first (`/dev/dri/card2` then `card1` on a typical cylinder). Never PCI `by-path` names: those contain `:` and Hyprland login-loops.
-- **Screen** — screensaver after 2.5 minutes. **No auto-lock.** Omarchy lock runs `hyprctl dpms disable` ~5 s later; on these FirePros that drops DisplayPort until a power-button reboot. Do not Super+Ctrl+L.
+- **Screen** — screensaver after 2.5 minutes, lock after 5. Password overlay. Apply clones `omarchy.lock` and **does not** `dpms disable` (that drops D700 HPD). The panel stays powered with the lock on it. Machine Sleep is still forbidden.
 - **Sleep** — power-menu Suspend is hidden, Sleep key locks instead of sleeping, `systemctl suspend` / Hibernate are masked. The 2013 FirePro cannot wake DisplayPort; only a reboot recovers. Power the machine off.
 - **Wi-Fi** — reconnects the Broadcom BCM4360 if the radio drops. No BSSID lock.
 - **Login** — greeter keymap from `/etc/vconsole.conf`.
