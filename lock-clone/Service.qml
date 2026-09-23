@@ -175,7 +175,10 @@ Item {
   function runBlank() {
     // nomdelasociete.macpro: never dpms disable (kills D700 HPD). Cover the
     // password field with the lock-surface idle animation instead.
-    if (lockRequested && !authenticatingPassword) idleCovered = true
+    if (lockRequested && !authenticatingPassword) {
+      idleCovered = true
+      logEvent("idle-cover: on")
+    }
   }
 
   function submitPassword(value) {
@@ -419,7 +422,7 @@ Item {
 
   Timer {
     id: idleBlankTimer
-    interval: 150000
+    interval: 20000
     repeat: false
     property double armedAt: 0
     onTriggered: {

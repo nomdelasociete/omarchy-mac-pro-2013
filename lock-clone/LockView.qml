@@ -261,6 +261,13 @@ Item {
         onTriggered: idleClock.text = Qt.formatTime(new Date(), "HH:mm")
       }
 
+      MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+        onClicked: root.wakeRequested()
+        onPositionChanged: root.wakeRequested()
+      }
+
       Keys.onPressed: function(event) {
         root.wakeRequested()
         event.accepted = false
