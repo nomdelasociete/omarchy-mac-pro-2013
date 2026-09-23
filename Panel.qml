@@ -275,7 +275,7 @@ Panel {
             }
 
             Fact { label: "GPUs"; value: "card2 display, card1 offload. No PCI colons." }
-            Fact { label: "Screen"; value: "Screensaver 2.5 min, lock 5 min (overlay). Click to unlock." }
+            Fact { label: "Screen"; value: "Screensaver 2.5 min. Auto-lock off — Omarchy lock DPMS-kills DP." }
             Fact { label: "Sleep"; value: "Power-menu Sleep is blocked. Kernel cannot wake DP. Power off the machine." }
             Fact { label: "Wi-Fi"; value: "Reconnect if the Broadcom radio drops." }
             Fact { label: "Login"; value: "Greeter keymap from vconsole." }
@@ -315,7 +315,7 @@ Panel {
             }
 
             Fact { label: "DRM"; value: "card2 display · card1 offload" }
-            Fact { label: "Screen"; value: macpro.screensaverOff ? "Screensaver flag was on — Apply restores overlay lock." : "Overlay lock on. Click wakes. Do not use Sleep." }
+            Fact { label: "Screen"; value: macpro.screensaverOff ? "Screensaver flag was on — Apply restores screensaver." : "Screensaver on. Do not lock (Super+Ctrl+L) — it blanks DP." }
             Fact { label: "Sleep"; value: (macpro.suspend === "masked" ? "Machine sleep blocked (amdgpu HPD). Power off to stop." : "Sleep is NOT masked — Apply now.") }
 
             Toggle {

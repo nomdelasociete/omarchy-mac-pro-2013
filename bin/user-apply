@@ -69,7 +69,8 @@ p = Path.home() / ".config/omarchy/shell.json"
 d = json.loads(p.read_text()) if p.is_file() else {"version": 1}
 d.setdefault("idle", {})
 d["idle"]["screensaver"] = 150
-d["idle"]["lock"] = 300
+# Omarchy lock runs hyprctl dpms disable ~5s later; on D700 that drops HPD.
+d["idle"]["lock"] = 8640000
 p.write_text(json.dumps(d, indent=2) + "\n")
 PY
 rm -f "$HOME/.local/state/omarchy/indicators/stay-awake"
@@ -117,9 +118,10 @@ hl.env("VDPAU_DRIVER", "radeonsi")
 hl.env("AMD_VULKAN_ICD", "RADV")
 hl.env("VK_ICD_FILENAMES", "/usr/share/vulkan/icd.d/radeon_icd.json")
 hl.config({ cursor = { no_hardware_cursors = 1 } })
--- Sleep key would call logind suspend and wedge DP. Lock instead.
-o.bind("XF86Sleep", "Lock (machine Sleep blocked)", "omarchy-system-lock", { locked = true })
-o.bind("XF86Suspend", "Lock (machine Sleep blocked)", "omarchy-system-lock", { locked = true })
+-- Sleep/lock blank DP on D700 (hyprctl dpms disable). Do not lock.
+hl.unbind("SUPER + CTRL + L")
+o.bind("XF86Sleep", "Ignored (lock/sleep would kill DisplayPort)", "true", { locked = true })
+o.bind("XF86Suspend", "Ignored (lock/sleep would kill DisplayPort)", "true", { locked = true })
 EOF
 hypr="$HOME/.config/hypr/hyprland.lua"
 if [[ -f "$hypr" ]] && ! grep -q "$MARKER.lua" "$hypr"; then
