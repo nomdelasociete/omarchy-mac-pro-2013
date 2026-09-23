@@ -118,9 +118,7 @@ Item {
 
     MouseArea {
       anchors.fill: parent
-      hoverEnabled: true
       onClicked: { root.wakeRequested(); root.forcePasswordFocus() }
-      onPositionChanged: root.wakeRequested()
     }
 
     BorderSurface {
@@ -263,9 +261,7 @@ Item {
 
       MouseArea {
         anchors.fill: parent
-        hoverEnabled: true
         onClicked: root.wakeRequested()
-        onPositionChanged: root.wakeRequested()
       }
 
       Keys.onPressed: function(event) {

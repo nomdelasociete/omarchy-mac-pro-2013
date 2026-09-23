@@ -167,6 +167,7 @@ Item {
   }
 
   function runWake() {
+    if (idleCovered) logEvent("idle-cover: off")
     idleCovered = false
     if (!wakeProcess.running) wakeProcess.running = true
     if (lockRequested) armBlankTimer()
