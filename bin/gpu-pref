@@ -44,7 +44,7 @@ def offload_prime() -> str:
             else:
                 offload = offload or d.name
     pci = offload or "0000:02:00.0"
-    return "pci-" + pci.replace(":", "_")
+    return "pci-" + pci.replace(":", "_").replace(".", "_")
 
 
 OFFLOAD_PRIME = offload_prime()

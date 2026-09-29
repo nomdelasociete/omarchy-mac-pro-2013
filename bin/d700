@@ -4,7 +4,7 @@ set -euo pipefail
 prime="pci-0000_02_00_0"
 if [[ -e /sys/class/drm/d700-offload ]]; then
   pci="$(basename "$(readlink -f /sys/class/drm/d700-offload/device 2>/dev/null || true)")"
-  [[ "$pci" == 0000:* ]] && prime="pci-${pci//:/_}"
+  [[ "$pci" == 0000:* ]] && prime="pci-${pci//[:.]/_}"
 else
   for d in /sys/bus/pci/devices/*; do
     [[ -r $d/vendor && -r $d/class ]] || continue
