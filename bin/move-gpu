@@ -41,4 +41,7 @@ done
 kill -KILL "$pid" 2>/dev/null || true
 
 cd "$work"
-exec setsid uwsm-app -- "${args[@]}"
+# Do not exec the app: the panel wraps this helper in `timeout 15`.
+# exec would make timeout kill Blender (etc.) after 15 seconds.
+setsid --fork uwsm-app -- "${args[@]}" </dev/null >/dev/null 2>&1
+exit 0

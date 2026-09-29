@@ -210,7 +210,7 @@ Item {
       if (pendingPid > 0) {
         moving = true
         actionStatus = "Relaunching on " + pendingGpu + "…"
-        moveProc.command = ["/usr/bin/timeout", "15", moveBin, String(pendingPid), pendingGpu]
+        moveProc.command = ["/usr/bin/timeout", "8", moveBin, String(pendingPid), pendingGpu]
         moveProc.running = true
       } else {
         actionStatus = "Saved for next launch"
