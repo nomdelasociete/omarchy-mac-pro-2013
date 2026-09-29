@@ -2,9 +2,21 @@
 
 ![Mac Pro 2013](preview.png)
 
-The Omarchy setup for the Late 2013 Mac Pro (MacPro6,1) — the cylinder. Dual FirePro **D300, D500 or D700**.
+**The Late 2013 cylinder, set up for Omarchy in one Apply.** Dual FirePro D300, D500 or D700. DisplayPort that stays alive. Both GPUs. Sleep that cannot brick the screen.
 
-Installing the plugin only puts the cylinder on the bar. **Apply** is what actually configures the machine.
+Installing the plugin only puts the cylinder on the bar. **Apply** is the setup. One sudo in a terminal. Password once.
+
+## Why this exists
+
+A stock Omarchy install on this machine will login-loop if you feed Hyprland PCI `by-path` names, go black if you `dpms off` or Sleep, and leave the second FirePro idle. This plugin is the path that already works on two cylinders (D700 + D500). Everyone else with this hardware should not have to learn that the hard way.
+
+## What you get
+
+- **Both FirePros** — the one with the cable drives the screen; the other renders. Pick a window in the bar; next launch from the menu uses that GPU.
+- **A screen that comes back** — screensaver at 2.5 minutes, password at 5. The lock does **not** cut DisplayPort (stock Omarchy lock does, and only a power-button reboot recovers).
+- **Sleep is off** — Suspend / Hibernate are masked. Power the machine off.
+- **Wi-Fi that reconnects** when the Broadcom radio drops.
+- **Login keymap** from your vconsole (AZERTY stays AZERTY).
 
 ## Install
 
@@ -12,59 +24,38 @@ Installing the plugin only puts the cylinder on the bar. **Apply** is what actua
 omarchy plugin add https://github.com/nomdelasociete/omarchy-mac-pro-2013.git --enable
 ```
 
-Click the cylinder → **Apply · sudo in a terminal**. Type your password once.
+Bar → cylinder → **Apply · sudo in a terminal**.
 
-First Apply installs package `nomdelasociete-macpro` from the [v0.4.0 GitHub Release](https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/tag/v0.4.0) if needed, after checking a pinned SHA-256. Pacman owns the root helper. Apply then checks the installed helper digest and **refuses** if it does not match. The plugin checkout is never copied into a root path.
-
-`omarchy plugin add` copies widget files only. It does not sudo, and it does not write `AQ_DRM_DEVICES`.
-
-## What Apply does
-
-- **GPUs** — puts the connected FirePro first (`/dev/dri/card2` then `card1` on a typical cylinder). Never PCI `by-path` names: those contain `:` and Hyprland login-loops.
-- **Screen** — screensaver after 2.5 minutes, lock after 5 (password). Apply clones `omarchy.lock`, **disables** the stock lock (it still DPMS-kills DP if it stays loaded), and restarts the shell so the clone owns lock IPC. After 20 s idle on the lock, a clock cover hides the password field. Click or key brings it back. **No** `dpms disable`. Machine Sleep is still forbidden.
-- **Sleep** — power-menu Suspend is hidden, Sleep key locks instead of sleeping, `systemctl suspend` / Hibernate are masked. The 2013 FirePro cannot wake DisplayPort; only a reboot recovers. Power the machine off.
-- **Wi-Fi** — reconnects the Broadcom BCM4360 if the radio drops. No BSSID lock.
-- **Login** — greeter keymap from `/etc/vconsole.conf`.
-- **Apps** — RADV, software cursors. From the bar, pick a window’s GPU; that choice is saved and used on the next menu launch (`.desktop`). Open windows relaunch now. `d700 <app>` runs something once on the offload FirePro (name kept even on D500).
+That is the whole setup. `omarchy plugin add` does not sudo and does not touch the GPU.
 
 ## What it will not do
 
-- `amdgpu.dc=0` (no picture at boot). The package ships a pacman hook that strips it before any UKI rebuild.
-- Restart Hyprland, SDDM, or `gpu_recover` for a black screen
-- Make the internal Wi-Fi as good as Ethernet or a USB adapter
+- Turn the Philips (or any DP panel) *off*. The 2013 FirePro cannot wake the link. Lock stays on a live signal.
+- Make the internal BCM4360 as fast as Ethernet.
+- `amdgpu.dc=0` (no picture). `gpu_recover` for a black screen (it makes it worse).
 
 ## Remove
 
-Bar → **Remove profile**. Plugin can stay installed.
+Bar → **Remove profile**. The plugin can stay.
 
 ```bash
 omarchy plugin remove nomdelasociete.macpro
 ```
 
-Suspend stays masked until you unmask it. Do not unmask on this hardware.
+Suspend stays masked. Do not unmask it on this hardware.
 
 ## Requirements
 
-- Omarchy with its shell running
-- Late 2013 Mac Pro, product `MacPro6,1`, two AMD FirePro D300, D500 or D700s
-- A real terminal for sudo (Apply does not use polkit)
-- Package `nomdelasociete-macpro` from the [v0.4.0 GitHub Release](https://github.com/nomdelasociete/omarchy-mac-pro-2013/releases/tag/v0.4.0) (Apply installs it if missing, SHA-256 pinned)
+- Omarchy
+- Late 2013 Mac Pro (`MacPro6,1`), two FirePro D300, D500 or D700
+- A real terminal for the one sudo
 
-MIT.
+MIT. `d700 <app>` still means “run this on the offload FirePro”, including on a D500.
 
 ## Privilege
 
-Apply writes your session files as you. The privileged helper is **package** `nomdelasociete-macpro` (`/usr/lib/nomdelasociete-macpro/`), owned by pacman, bytes pinned in `packaging/digests.txt`.
+Apply writes your session files as you. Root work is package `nomdelasociete-macpro` (`/usr/lib/nomdelasociete-macpro/`), owned by pacman, bytes in `packaging/digests.txt`.
 
-```text
-sudo env -i PATH=/usr/bin:/usr/sbin /usr/lib/nomdelasociete-macpro/apply
-```
-
-Before that sudo, Apply checks:
-
-1. `pacman -Qqo` is `nomdelasociete-macpro`
-2. sha256 of `apply` / `remove` / `strip-dc0` match the reviewed digests
-
-If either fails, it installs the pinned GitHub Release `.pkg.tar.zst` (sha256 checked) and verifies again. Still wrong → **exit, no sudo**. No AUR. Never copies the plugin checkout into a root path.
+Apply refuses unless `pacman -Qqo` is that package and the helper sha256s match. Missing package → GitHub Release v0.4.0 `.pkg.tar.zst` (sha256 checked), then verify again. No AUR. The plugin checkout is never copied into a root path.
 
 PKGBUILD source is the v0.4.0 tarball (`147fe8a…`) with a real `sha256sums`, not `SKIP`.

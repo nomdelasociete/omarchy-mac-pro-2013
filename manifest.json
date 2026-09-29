@@ -2,17 +2,17 @@
   "schemaVersion": 1,
   "id": "nomdelasociete.macpro",
   "name": "Mac Pro 2013",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "author": "Nom de la Société",
   "license": "MIT",
-  "description": "Late 2013 cylinder (D300/D500/D700): dual FirePro, lock without DPMS, Sleep blocked, Wi-Fi, login keymap.",
+  "description": "One Apply and the 2013 cylinder is a real Omarchy machine: both FirePros, a lock that does not kill DisplayPort, Sleep blocked so the screen comes back.",
   "kinds": ["bar-widget"],
   "entryPoints": {
     "barWidget": "Panel.qml"
   },
   "barWidget": {
     "displayName": "Mac Pro 2013",
-    "description": "Apply the 2013 Mac Pro profile; relaunch windows on the other FirePro.",
+    "description": "Apply the cylinder profile. Dual FirePro, lock without killing DP, Sleep off.",
     "category": "Hardware",
     "aliases": ["gpu", "macpro", "d300", "d500", "d700", "prime"],
     "allowMultiple": false,
