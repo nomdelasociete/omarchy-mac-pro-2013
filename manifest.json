@@ -5,14 +5,14 @@
   "version": "0.4.9",
   "author": "Nom de la Société",
   "license": "MIT",
-  "description": "One Apply and the 2013 cylinder is a real Omarchy machine: both FirePros, a lock that does not kill DisplayPort, Sleep blocked so the screen comes back.",
+  "description": "The go-to plugin for a Late 2013 Mac Pro (aka Trashcan or Cylinder). Everything this machine needs to run nicely on Omarchy: both FirePros (D300, D500 or D700), a lock that keeps the picture, Sleep off, auto Wi-Fi repair, and GPU per app. One Apply and you're at 100%.",
   "kinds": ["bar-widget"],
   "entryPoints": {
     "barWidget": "Panel.qml"
   },
   "barWidget": {
     "displayName": "Mac Pro 2013",
-    "description": "Apply the cylinder profile. Dual FirePro, lock without killing DP, Sleep off.",
+    "description": "The 2013 Mac Pro go-to: both GPUs, a lock that keeps the picture, Sleep off, auto Wi-Fi repair, GPU per app.",
     "category": "Hardware",
     "aliases": ["gpu", "macpro", "d300", "d500", "d700", "prime"],
     "allowMultiple": false,

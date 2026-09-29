@@ -2,13 +2,9 @@
 
 ![Mac Pro 2013](preview.png)
 
-**The Late 2013 cylinder, set up for Omarchy in one Apply.** Dual FirePro D300, D500 or D700. DisplayPort that stays alive. Both GPUs. Sleep that cannot brick the screen.
+The go-to plugin for a Late 2013 Mac Pro (aka Trashcan or Cylinder). Stock Omarchy leaves the second FirePro idle, kills the picture when you lock or Sleep, and can login-loop if DRM is wired wrong. This is everything the machine needs to run nicely: both GPUs (D300, D500 or D700), a lock that keeps the picture, Sleep off, auto Wi-Fi repair, and GPU per app. One Apply. Two machines already run it — a D700 and a D500.
 
 Installing the plugin only puts the cylinder on the bar. **Apply** is the setup. One sudo in a terminal. Password once.
-
-## Why this exists
-
-A stock Omarchy install on this machine will login-loop if you feed Hyprland PCI `by-path` names, go black if you `dpms off` or Sleep, and leave the second FirePro idle. This plugin is the path that already works on two cylinders (D700 + D500). Everyone else with this hardware should not have to learn that the hard way.
 
 ## What you get
 
